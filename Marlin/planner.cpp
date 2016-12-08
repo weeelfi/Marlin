@@ -61,7 +61,11 @@
 #include "planner.h"
 #include "stepper.h"
 #include "temperature.h"
+#if ENABLED(EXPERIMENTAL_LCD)
+#include "experimental_lcd.h"
+#else
 #include "ultralcd.h"
+#endif
 #include "language.h"
 
 #include "Marlin.h"

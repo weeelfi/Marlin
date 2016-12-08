@@ -219,7 +219,12 @@
 
 #include "Marlin.h"
 
+#if ENABLED(EXPERIMENTAL_LCD)
+#include "experimental_lcd.h"
+#else
 #include "ultralcd.h"
+#endif
+
 #include "planner.h"
 #include "stepper.h"
 #include "endstops.h"
@@ -232,6 +237,10 @@
 #include "nozzle.h"
 #include "duration_t.h"
 #include "types.h"
+
+#if HAS_CASE_LIGHT
+  bool case_light_on = false;
+#endif
 
 #if HAS_ABL
   #include "vector_3.h"

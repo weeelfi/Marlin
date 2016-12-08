@@ -49,7 +49,11 @@
 #include "endstops.h"
 #include "planner.h"
 #include "temperature.h"
+#if ENABLED(EXPERIMENTAL_LCD)
+#include "experimental_lcd.h"
+#else
 #include "ultralcd.h"
+#endif
 #include "language.h"
 #include "cardreader.h"
 #include "speed_lookuptable.h"
