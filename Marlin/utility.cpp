@@ -33,7 +33,7 @@ void safe_delay(millis_t ms) {
   delay(ms);
 }
 
-#if ENABLED(ULTRA_LCD)
+#if ENABLED(ULTRA_LCD) || ENABLED(EXPERIMENTAL_LCD)
 
   char conv[9];
 

@@ -125,7 +125,11 @@
 #include "endstops.h"
 #include "planner.h"
 #include "temperature.h"
+#if ENABLED(EXPERIMENTAL_LCD)
+#include "experimental_lcd.h"
+#else
 #include "ultralcd.h"
+#endif
 #include "configuration_store.h"
 
 #if ENABLED(MESH_BED_LEVELING)

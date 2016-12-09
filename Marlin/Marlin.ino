@@ -34,6 +34,11 @@
 /* All the implementation is done in *.cpp files to get better compatibility with avr-gcc without the Arduino IDE */
 /* Use this file to help the Arduino IDE find which Arduino libraries are needed and to keep documentation on GCode */
 
+
+
+#include <Nextion.h>
+
+
 #include "MarlinConfig.h"
 
 #if ENABLED(ULTRA_LCD)
@@ -75,4 +80,10 @@
 #if ENABLED(HAVE_L6470DRIVER)
   #include <SPI.h>
   #include <L6470.h>
+#endif
+
+#if ENABLED(EXPERIMENTAL_LCD)
+  #include "experimental_lcd.h"
+  #include "PrinterClass.h"
+  #include "TimeLib.h"
 #endif
