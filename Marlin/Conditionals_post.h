@@ -722,4 +722,13 @@
     #define DELTA_ENDSTOP_ADJ { 0 }
   #endif
 
+  #if ENABLED(SDCARD_SORT_ALPHA)
+    #define HAS_FOLDER_SORTING (FOLDER_SORTING || ENABLED(SDSORT_GCODE))
+  #endif
+
+  // LCD timeout to status screen default is 15s
+  #ifndef LCD_TIMEOUT_TO_STATUS
+    #define LCD_TIMEOUT_TO_STATUS 15000
+  #endif
+
 #endif // CONDITIONALS_POST_H

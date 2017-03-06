@@ -115,13 +115,13 @@
 #define SERIAL_PORT 0
 
 /**
-* This setting determines the communication speed of the printer.
-*
-* 250000 works in most cases, but you might try a lower speed if
-* you commonly experience drop-outs during host printing.
-*
-* :[2400, 9600, 19200, 38400, 57600, 115200, 250000]
-*/
+ * This setting determines the communication speed of the printer.
+ *
+ * 250000 works in most cases, but you might try a lower speed if
+ * you commonly experience drop-outs during host printing.
+ *
+ * :[2400, 9600, 19200, 38400, 57600, 115200, 250000]
+ */
 #define BAUDRATE 115200
 
 // Enable the Bluetooth serial interface on AT90USB devices
@@ -130,7 +130,7 @@
 // The following define selects which electronics board you have.
 // Please choose the name from boards.h that matches your setup
 #ifndef MOTHERBOARD
-#define MOTHERBOARD BOARD_RUMBA
+  #define MOTHERBOARD BOARD_RUMBA
 #endif
 
 // Optional custom name for your RepStrap or other custom machine
@@ -190,7 +190,7 @@
  *
  * :{ 0:'No power switch', 1:'ATX', 2:'X-Box 360' }
  */
-#define POWER_SUPPLY 0
+#define POWER_SUPPLY 1
 
 #if POWER_SUPPLY > 0
   // Enable this option to leave the PSU off at startup.
@@ -206,7 +206,7 @@
 
 /**
  * --NORMAL IS 4.7kohm PULLUP!-- 1kohm pullup can be used on hotend sensor, using correct resistor and table
- * 
+ *
  * Temperature sensors available:
  *
  *    -3 : thermocouple with MAX31855 (only for sensor 0)
@@ -231,13 +231,13 @@
  *    60 : 100k Maker's Tool Works Kapton Bed Thermistor beta=3950
  *    66 : 4.7M High Temperature thermistor from Dyze Design
  *    70 : the 100K thermistor found in the bq Hephestos 2
- * 
+ *
  *       1k ohm pullup tables - This is atypical, and requires changing out the 4.7k pullup for 1k.
  *                              (but gives greater accuracy and more stable PID)
  *    51 : 100k thermistor - EPCOS (1k pullup)
  *    52 : 200k thermistor - ATC Semitec 204GT-2 (1k pullup)
  *    55 : 100k thermistor - ATC Semitec 104GT-2 (Used in ParCan & J-Head) (1k pullup)
- * 
+ *
  *  1047 : Pt1000 with 4k7 pullup
  *  1010 : Pt1000 with 1k pullup (non standard)
  *   147 : Pt100 with 4k7 pullup
@@ -314,8 +314,8 @@
 
   // If you are using a pre-configured hotend then you can use one of the value sets by uncommenting it
   // Ultimaker
-  #define  DEFAULT_Kp 29.20
-  #define  DEFAULT_Ki 04.73
+  #define  DEFAULT_Kp 29.2
+  #define  DEFAULT_Ki 4.73
   #define  DEFAULT_Kd 45.33
 
   // MakerGear
@@ -342,7 +342,7 @@
 // If your configuration is significantly different than this and you don't understand the issues involved, you probably
 // shouldn't use bed PID until someone else verifies your hardware works.
 // If this is enabled, find your own PID constants below.
-//#define PIDTEMPBED
+#define PIDTEMPBED
 
 //#define BED_LIMIT_SWITCHING
 
@@ -459,7 +459,7 @@
 #define X_MAX_ENDSTOP_INVERTING false // set to true to invert the logic of the endstop.
 #define Y_MAX_ENDSTOP_INVERTING false // set to true to invert the logic of the endstop.
 #define Z_MAX_ENDSTOP_INVERTING false // set to true to invert the logic of the endstop.
-#define Z_MIN_PROBE_ENDSTOP_INVERTING false // set to true to invert the logic of the endstop.
+#define Z_MIN_PROBE_ENDSTOP_INVERTING false // set to true to invert the logic of the probe.
 
 // Enable this feature if all enabled endstop pins are interrupt-capable.
 // This will remove the need to poll the interrupt pins, saving many CPU cycles.
@@ -517,6 +517,7 @@
 
 /**
  * Default Jerk (mm/s)
+ * Override with M205 X Y Z E
  *
  * "Jerk" specifies the minimum speed change that requires acceleration.
  * When changing speed and direction, if the difference is less than the
@@ -578,8 +579,8 @@
 //    |           |
 //    O-- FRONT --+
 //  (0,0)
-#define X_PROBE_OFFSET_FROM_EXTRUDER 0      // X offset: -left  +right  [of the nozzle]
-#define Y_PROBE_OFFSET_FROM_EXTRUDER 32     // Y offset: -front +behind [the nozzle]
+#define X_PROBE_OFFSET_FROM_EXTRUDER 0  // X offset: -left  +right  [of the nozzle]
+#define Y_PROBE_OFFSET_FROM_EXTRUDER 32  // Y offset: -front +behind [the nozzle]
 #define Z_PROBE_OFFSET_FROM_EXTRUDER -0.60   // Z offset: -below +above  [the nozzle]
 
 // X and Y axis travel speed (mm/m) between probes
@@ -724,13 +725,15 @@
 #define Y_MAX_POS 240
 #define Z_MAX_POS 300
 
-//===========================================================================
-//========================= Filament Runout Sensor ==========================
-//===========================================================================
-//#define FILAMENT_RUNOUT_SENSOR // Uncomment for defining a filament runout sensor such as a mechanical or opto endstop to check the existence of filament
-                                 // RAMPS-based boards use SERVO3_PIN. For other boards you may need to define FIL_RUNOUT_PIN.
-                                 // It is assumed that when logic high = filament available
-                                 //                    when logic  low = filament ran out
+/**
+ * Filament Runout Sensor
+ * A mechanical or opto endstop is used to check for the presence of filament.
+ *
+ * RAMPS-based boards use SERVO3_PIN.
+ * For other boards you may need to define FIL_RUNOUT_PIN.
+ * By default the firmware assumes HIGH = has filament, LOW = ran out
+ */
+//#define FILAMENT_RUNOUT_SENSOR
 #if ENABLED(FILAMENT_RUNOUT_SENSOR)
   #define FIL_RUNOUT_INVERTING false // set to true to invert the logic of the sensor.
   #define ENDSTOPPULLUP_FIL_RUNOUT // Uncomment to use internal pullup for filament runout pins if the sensor is defined.
@@ -747,7 +750,7 @@
   #define MESH_INSET 15        // Mesh inset margin on print area
   #define MESH_NUM_X_POINTS 5  // Don't use more than 7 points per axis, implementation limited.
   #define MESH_NUM_Y_POINTS 5
-  #define MESH_HOME_SEARCH_Z 14  // Z after Home, bed somewhere below but above 0.0.
+  #define MESH_HOME_SEARCH_Z 1  // Z after Home, bed somewhere below but above 0.0.
 
   //#define MESH_G28_REST_ORIGIN // After homing all axes ('G28' or 'G28 XYZ') rest at origin [0,0,0]
 
@@ -804,8 +807,8 @@
 #if ENABLED(AUTO_BED_LEVELING_LINEAR) || ENABLED(AUTO_BED_LEVELING_BILINEAR)
 
   // Set the number of grid points per dimension.
-  #define ABL_GRID_POINTS_X 5
-  #define ABL_GRID_POINTS_Y ABL_GRID_POINTS_X
+  #define ABL_GRID_MAX_POINTS_X 5
+  #define ABL_GRID_MAX_POINTS_Y ABL_GRID_MAX_POINTS_X
 
   // Set the boundaries for probing (where the probe can reach).
   #define LEFT_PROBE_BED_POSITION 15
@@ -826,11 +829,11 @@
     // The height can be set with M420 Z<height>
     #define ENABLE_LEVELING_FADE_HEIGHT
 
-    // 
+    //
     // Experimental Subdivision of the grid by Catmull-Rom method.
     // Synthesizes intermediate points to produce a more detailed mesh.
-    // 
-    #define ABL_BILINEAR_SUBDIVISION
+    //
+    //#define ABL_BILINEAR_SUBDIVISION
     #if ENABLED(ABL_BILINEAR_SUBDIVISION)
       // Number of subdivisions between probe points
       #define BILINEAR_SUBDIVISIONS 3
@@ -867,7 +870,7 @@
 // For DELTA this is the top-center of the Cartesian print volume.
 //#define MANUAL_X_HOME_POS 0
 //#define MANUAL_Y_HOME_POS 0
-//#define MANUAL_Z_HOME_POS 0 // Distance between the nozzle to printbed after homing
+//#define MANUAL_Z_HOME_POS 0
 
 // Use "Z Safe Homing" to avoid homing with a Z probe outside the bed area.
 //
@@ -978,13 +981,13 @@
 //
 // Available list of patterns:
 //   P0: This is the default pattern, this process requires a sponge type
-//       material at a fixed bed location, the cleaning process is based on
-//       "strokes" i.e. back-and-forth movements between the starting and end
-//       points.
+//       material at a fixed bed location. S defines "strokes" i.e.
+//       back-and-forth movements between the starting and end points.
 //
 //   P1: This starts a zig-zag pattern between (X0, Y0) and (X1, Y1), "T"
 //       defines the number of zig-zag triangles to be done. "S" defines the
-//       number of strokes aka one back-and-forth movement. As an example
+//       number of strokes aka one back-and-forth movement. Zig-zags will
+//       be performed in whichever dimension is smallest. As an example,
 //       sending "G12 P1 S1 T3" will execute:
 //
 //          --
@@ -997,6 +1000,7 @@
 //                       |________|_________|_________|
 //                           T1        T2        T3
 //
+//
 // Caveats: End point Z should use the same value as Start point Z.
 //
 // Attention: This is an EXPERIMENTAL feature, in the future the G-code arguments
@@ -1005,8 +1009,11 @@
 //#define NOZZLE_CLEAN_FEATURE
 
 #if ENABLED(NOZZLE_CLEAN_FEATURE)
-  // Number of pattern repetitions
+  // Default number of pattern repetitions
   #define NOZZLE_CLEAN_STROKES  12
+  
+  // Default number of triangles
+  #define NOZZLE_CLEAN_TRIANGLES  3
 
   // Specify positions as { X, Y, Z }
   #define NOZZLE_CLEAN_START_POINT { 30, 30, (Z_MIN_POS + 1)}
@@ -1132,13 +1139,13 @@
 // This option overrides the default number of encoder pulses needed to
 // produce one step. Should be increased for high-resolution encoders.
 //
-//#define ENCODER_PULSES_PER_STEP 1
+#define ENCODER_PULSES_PER_STEP 4
 
 //
 // Use this option to override the number of step signals required to
 // move between next/prev menu items.
 //
-//#define ENCODER_STEPS_PER_MENU_ITEM 5
+#define ENCODER_STEPS_PER_MENU_ITEM 1
 
 /**
  * Encoder Direction Options
@@ -1155,7 +1162,7 @@
 //
 //  Set this option if CLOCKWISE causes values to DECREASE
 //
-//#define REVERSE_ENCODER_DIRECTION
+#define REVERSE_ENCODER_DIRECTION
 
 //
 // This option reverses the encoder direction for navigating LCD menus.
@@ -1187,8 +1194,8 @@
 // Note: Test audio output with the G-Code:
 //  M300 S<frequency Hz> P<duration ms>
 //
-//#define LCD_FEEDBACK_FREQUENCY_DURATION_MS 100
-//#define LCD_FEEDBACK_FREQUENCY_HZ 1000
+#define LCD_FEEDBACK_FREQUENCY_DURATION_MS 2
+#define LCD_FEEDBACK_FREQUENCY_HZ 1000
 
 //
 // CONTROLLER TYPE: Standard
@@ -1418,7 +1425,7 @@
 //
 //#define NUM_SERVOS 3 // Servo index starts with 0 for M280 command
 
-// Delay (in microseconds) before the next move will start, to give the servo time to reach its target angle.
+// Delay (in milliseconds) before the next move will start, to give the servo time to reach its target angle.
 // 300ms is a good value but you can try less delay.
 // If the servo can't reach the requested position, increase it.
 #define SERVO_DELAY 300

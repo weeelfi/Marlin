@@ -1,0 +1,23 @@
+C:\Users\Ballard\AppData\Local\Temp\VMBuilds\Marlin\mega_atmega2560\qr_solve.cpp.o: \
+ C:\Users\Ballard\AppData\Local\Temp\VMBuilds\Marlin\mega_atmega2560\qr_solve.cpp \
+ C:\Users\Ballard\AppData\Local\Temp\VMBuilds\Marlin\mega_atmega2560\qr_solve.h \
+ C:\Users\Ballard\AppData\Local\Temp\VMBuilds\Marlin\mega_atmega2560\MarlinConfig.h \
+ C:\Users\Ballard\AppData\Local\Temp\VMBuilds\Marlin\mega_atmega2560\fastio.h \
+ C:\Users\Ballard\AppData\Local\Temp\VMBuilds\Marlin\mega_atmega2560\macros.h \
+ C:\Users\Ballard\AppData\Local\Temp\VMBuilds\Marlin\mega_atmega2560\boards.h \
+ C:\Users\Ballard\AppData\Local\Temp\VMBuilds\Marlin\mega_atmega2560\Version.h \
+ C:\Users\Ballard\AppData\Local\Temp\VMBuilds\Marlin\mega_atmega2560\Configuration.h \
+ C:\Users\Ballard\AppData\Local\Temp\VMBuilds\Marlin\mega_atmega2560\Conditionals_LCD.h \
+ C:\Users\Ballard\AppData\Local\Temp\VMBuilds\Marlin\mega_atmega2560\Configuration_adv.h \
+ C:\Users\Ballard\AppData\Local\Temp\VMBuilds\Marlin\mega_atmega2560\pins.h \
+ C:\Users\Ballard\AppData\Local\Temp\VMBuilds\Marlin\mega_atmega2560\pins_RUMBA.h \
+ C:\Users\Ballard\AppData\Local\arduino15\packages\arduino\hardware\avr\1.6.15\cores\arduino/Arduino.h \
+ C:\Users\Ballard\AppData\Local\arduino15\packages\arduino\hardware\avr\1.6.15\cores\arduino/binary.h \
+ C:\Users\Ballard\AppData\Local\arduino15\packages\arduino\hardware\avr\1.6.15\cores\arduino/WCharacter.h \
+ C:\Users\Ballard\AppData\Local\arduino15\packages\arduino\hardware\avr\1.6.15\cores\arduino/WString.h \
+ C:\Users\Ballard\AppData\Local\arduino15\packages\arduino\hardware\avr\1.6.15\cores\arduino/HardwareSerial.h \
+ C:\Users\Ballard\AppData\Local\arduino15\packages\arduino\hardware\avr\1.6.15\cores\arduino/USBAPI.h \
+ C:\Users\Ballard\AppData\Local\arduino15\packages\arduino\hardware\avr\1.6.15\cores\arduino/Arduino.h \
+ C:\Users\Ballard\AppData\Local\arduino15\packages\arduino\hardware\avr\1.6.15\variants\mega/pins_arduino.h \
+ C:\Users\Ballard\AppData\Local\Temp\VMBuilds\Marlin\mega_atmega2560\Conditionals_post.h \
+ C:\Users\Ballard\AppData\Local\Temp\VMBuilds\Marlin\mega_atmega2560\SanityCheck.h
