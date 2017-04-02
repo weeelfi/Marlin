@@ -157,7 +157,7 @@ void CardReader::lsDive(const char *prepend, SdFile parent, const char * const m
   } // while readDir
 }
 
-void CardReader::ls()  {
+void CardReader::ls() {
   lsAction = LS_SerialPrint;
   root.rewind();
   lsDive("", root);
