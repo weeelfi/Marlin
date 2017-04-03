@@ -115,9 +115,9 @@ void PrinterClass::setPower(bool status)
 	{
 		_power = status;
 
-		vaPower.setValue(_power ? "1" : "0");
+		vaPower.setValue(_power ? 1 : 0);
 		if (_page == 2)
-			btPower.setValue(_power ? "1" : "0");
+			btPower.setValue(_power ? 1 : 0);
 		else if (_page == 1)
 		{
 			if (status)
@@ -134,9 +134,9 @@ void PrinterClass::setCaseLight(bool status)
 	{
 		_caseLight = status;
 
-		vaLight.setValue(_caseLight ? "1" : "0");
+		vaLight.setValue(_caseLight ? 1 : 0);
 		if (_page == 2)
-			btLight.setValue(_caseLight ? "1" : "0");
+			btLight.setValue(_caseLight ? 1 : 0);
 		else if (_page == 1)
 		{
 			//uint32_t val = atoi(subbuff);
