@@ -29,6 +29,7 @@ void lcd_setstatus(const char* message, const bool persist = false);
 FORCE_INLINE void lcd_buttons_update() {}
 FORCE_INLINE void lcd_reset_alert_level() {}
 
+inline void lcd_status_printf_P(const uint8_t level, const char * const fmt, ...) { UNUSED(level); UNUSED(fmt); }
 inline void status_printf(uint8_t level, const char *status, ...) { UNUSED(level); UNUSED(status); }
 
 void mySerialEvent();
