@@ -8001,6 +8001,11 @@ inline void gcode_M503() {
     }
 
     SERIAL_EOL;
+	char message[20];
+	strcpy(message, MSG_ZPROBE_ZOFFSET);
+	strcat(message, ":");
+	strcat(message, ftostr43sign(zprobe_zoffset));
+	lcd_setstatus(message);
   }
 
 #endif // HAS_BED_PROBE

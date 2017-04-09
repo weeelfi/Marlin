@@ -79,7 +79,7 @@ private:
 	NexText tY = NexText(1, 17, "tY");
 	NexText tZ = NexText(1, 18, "tZ");
 
-	NexText tMessage = NexText(1, 7, "tMessage");
+	NexText tMessage = NexText(1, 7, "MainPage.tMessage");
 
 	NexText tFan = NexText(1, 21, "tFan");
 
