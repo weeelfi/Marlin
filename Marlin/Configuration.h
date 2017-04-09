@@ -142,7 +142,7 @@
 //#define MACHINE_UUID "00000000-0000-0000-0000-000000000000"
 
 // This defines the number of extruders
-// :[1, 2, 3, 4]
+// :[1, 2, 3, 4, 5]
 #define EXTRUDERS 1
 
 // Enable if your E steppers or extruder gear ratios are not identical
@@ -254,6 +254,7 @@
 #define TEMP_SENSOR_1 0
 #define TEMP_SENSOR_2 0
 #define TEMP_SENSOR_3 0
+#define TEMP_SENSOR_4 0
 #define TEMP_SENSOR_BED 5
 
 // Dummy thermistor constant temperature readings, for use with 998 and 999
@@ -282,6 +283,7 @@
 #define HEATER_1_MINTEMP 5
 #define HEATER_2_MINTEMP 5
 #define HEATER_3_MINTEMP 5
+#define HEATER_4_MINTEMP 5
 #define BED_MINTEMP 5
 
 // When temperature exceeds max temp, your heater will be switched off.
@@ -291,6 +293,7 @@
 #define HEATER_1_MAXTEMP 320
 #define HEATER_2_MAXTEMP 275
 #define HEATER_3_MAXTEMP 275
+#define HEATER_4_MAXTEMP 275
 #define BED_MAXTEMP 150
 
 //===========================================================================
@@ -593,7 +596,7 @@
  *   is enabled then it also applies to Z_PROBE_SPEED_SLOW.
  */
 
-/*   Enable if you have a Z probe mounted on a sled like those designed by Charles Bell.  */
+// Enable if you have a Z probe mounted on a sled like those designed by Charles Bell.
 //#define Z_PROBE_SLED
 //#define SLED_DOCKING_OFFSET 5  // The extra distance the X axis must travel to pickup the sled. 0 should be fine but you can push it further if you'd like.
 
@@ -620,16 +623,16 @@
 #define Y_PROBE_OFFSET_FROM_EXTRUDER 32  // Y offset: -front +behind [the nozzle]
 #define Z_PROBE_OFFSET_FROM_EXTRUDER -1.44   // Z offset: -below +above  [the nozzle]
 
-/*   X and Y axis travel speed (mm/m) between probes */
+// X and Y axis travel speed (mm/m) between probes
 #define XY_PROBE_SPEED 8000
 
-/*   Speed for the first approach when double-probing (with PROBE_DOUBLE_TOUCH) */
+// Speed for the first approach when double-probing (with PROBE_DOUBLE_TOUCH)
 #define Z_PROBE_SPEED_FAST HOMING_FEEDRATE_Z
 
-/*   Speed for the "accurate" probe of each point  */
+// Speed for the "accurate" probe of each point
 #define Z_PROBE_SPEED_SLOW (Z_PROBE_SPEED_FAST / 2)
 
-/*   Use double touch for probing  */
+// Use double touch for probing
 //#define PROBE_DOUBLE_TOUCH
 
 /**
@@ -693,7 +696,7 @@
 #define Z_MIN_PROBE_USES_Z_MIN_ENDSTOP_PIN
 
 
-/* Enable Z Probe Repeatability test to see how accurate your probe is  */
+// Enable Z Probe Repeatability test to see how accurate your probe is
 //#define Z_MIN_PROBE_REPEATABILITY_TEST
 
 /**
@@ -752,6 +755,7 @@
 #define INVERT_E1_DIR true
 #define INVERT_E2_DIR false
 #define INVERT_E3_DIR false
+#define INVERT_E4_DIR false
 
 // @section homing
 
@@ -1237,13 +1241,13 @@
 // This option overrides the default number of encoder pulses needed to
 // produce one step. Should be increased for high-resolution encoders.
 //
-#define ENCODER_PULSES_PER_STEP 4
+//#define ENCODER_PULSES_PER_STEP 1
 
 //
 // Use this option to override the number of step signals required to
 // move between next/prev menu items.
 //
-#define ENCODER_STEPS_PER_MENU_ITEM 1
+//#define ENCODER_STEPS_PER_MENU_ITEM 5
 
 /**
  * Encoder Direction Options
@@ -1260,7 +1264,7 @@
 //
 //  Set this option if CLOCKWISE causes values to DECREASE
 //
-#define REVERSE_ENCODER_DIRECTION
+//#define REVERSE_ENCODER_DIRECTION
 
 //
 // This option reverses the encoder direction for navigating LCD menus.
@@ -1544,33 +1548,39 @@
 // With this option servos are powered only during movement, then turned off to prevent jitter.
 //#define DEACTIVATE_SERVOS_AFTER_MOVE
 
-/**********************************************************************\
- * Support for a filament diameter sensor
- * Also allows adjustment of diameter at print time (vs  at slicing)
- * Single extruder only at this point (extruder 0)
+/**
+ * Filament Width Sensor
  *
- * Motherboards
- * 34 - RAMPS1.4 - uses Analog input 5 on the AUX2 connector
- * 81 - Printrboard - Uses Analog input 2 on the Exp1 connector (version B,C,D,E)
- * 301 - Rambo  - uses Analog input 3
- * Note may require analog pins to be defined for different motherboards
- **********************************************************************/
-// Uncomment below to enable
+ * Measures the filament width in real-time and adjusts
+ * flow rate to compensate for any irregularities.
+ *
+ * Also allows the measured filament diameter to set the
+ * extrusion rate, so the slicer only has to specify the
+ * volume.
+ *
+ * Only a single extruder is supported at this time.
+ *
+ *  34 RAMPS_14    : Analog input 5 on the AUX2 connector
+ *  81 PRINTRBOARD : Analog input 2 on the Exp1 connector (version B,C,D,E)
+ * 301 RAMBO       : Analog input 3
+ *
+ * Note: May require analog pins to be defined for other boards.
+ */
 //#define FILAMENT_WIDTH_SENSOR
 
-#define DEFAULT_NOMINAL_FILAMENT_DIA 3.00  //Enter the diameter (in mm) of the filament generally used (3.0 mm or 1.75 mm) - this is then used in the slicer software.  Used for sensor reading validation
+#define DEFAULT_NOMINAL_FILAMENT_DIA 3.00   // (mm) Diameter of the filament generally used (3.0 or 1.75mm), also used in the slicer. Used to validate sensor reading.
 
 #if ENABLED(FILAMENT_WIDTH_SENSOR)
-  #define FILAMENT_SENSOR_EXTRUDER_NUM 0   //The number of the extruder that has the filament sensor (0,1,2)
-  #define MEASUREMENT_DELAY_CM        14   //measurement delay in cm.  This is the distance from filament sensor to middle of barrel
+  #define FILAMENT_SENSOR_EXTRUDER_NUM 0    // Index of the extruder that has the filament sensor (0,1,2,3)
+  #define MEASUREMENT_DELAY_CM        14    // (cm) The distance from the filament sensor to the melting chamber
 
-  #define MEASURED_UPPER_LIMIT         3.30  //upper limit factor used for sensor reading validation in mm
-  #define MEASURED_LOWER_LIMIT         1.90  //lower limit factor for sensor reading validation in mm
-  #define MAX_MEASUREMENT_DELAY       20     //delay buffer size in bytes (1 byte = 1cm)- limits maximum measurement delay allowable (must be larger than MEASUREMENT_DELAY_CM  and lower number saves RAM)
+  #define MEASURED_UPPER_LIMIT         3.30 // (mm) Upper limit used to validate sensor reading
+  #define MEASURED_LOWER_LIMIT         1.90 // (mm) Lower limit used to validate sensor reading
+  #define MAX_MEASUREMENT_DELAY       20    // (bytes) Buffer size for stored measurements (1 byte per cm). Must be larger than MEASUREMENT_DELAY_CM.
 
-  #define DEFAULT_MEASURED_FILAMENT_DIA  DEFAULT_NOMINAL_FILAMENT_DIA  //set measured to nominal initially
+  #define DEFAULT_MEASURED_FILAMENT_DIA DEFAULT_NOMINAL_FILAMENT_DIA // Set measured to nominal initially
 
-  //When using an LCD, uncomment the line below to display the Filament sensor data on the last line instead of status.  Status will appear for 5 sec.
+  // Display filament width on the LCD status line. Status messages will expire after 5 seconds.
   //#define FILAMENT_LCD_DISPLAY
 #endif
 

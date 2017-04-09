@@ -142,7 +142,7 @@
 #define MACHINE_UUID "8d083632-40c5-4649-85b8-43d9ae6c5d55" // BQ Hephestos 2 standard config
 
 // This defines the number of extruders
-// :[1, 2, 3, 4]
+// :[1, 2, 3, 4, 5]
 #define EXTRUDERS 1
 
 // Enable if your E steppers or extruder gear ratios are not identical
@@ -250,10 +250,11 @@
  *
  * :{ '0': "Not used", '1':"100k / 4.7k - EPCOS", '2':"200k / 4.7k - ATC Semitec 204GT-2", '3':"Mendel-parts / 4.7k", '4':"10k !! do not use for a hotend. Bad resolution at high temp. !!", '5':"100K / 4.7k - ATC Semitec 104GT-2 (Used in ParCan & J-Head)", '6':"100k / 4.7k EPCOS - Not as accurate as Table 1", '7':"100k / 4.7k Honeywell 135-104LAG-J01", '8':"100k / 4.7k 0603 SMD Vishay NTCS0603E3104FXT", '9':"100k / 4.7k GE Sensing AL03006-58.2K-97-G1", '10':"100k / 4.7k RS 198-961", '11':"100k / 4.7k beta 3950 1%", '12':"100k / 4.7k 0603 SMD Vishay NTCS0603E3104FXT (calibrated for Makibox hot bed)", '13':"100k Hisens 3950  1% up to 300°C for hotend 'Simple ONE ' & hotend 'All In ONE'", '20':"PT100 (Ultimainboard V2.x)", '51':"100k / 1k - EPCOS", '52':"200k / 1k - ATC Semitec 204GT-2", '55':"100k / 1k - ATC Semitec 104GT-2 (Used in ParCan & J-Head)", '60':"100k Maker's Tool Works Kapton Bed Thermistor beta=3950", '66':"Dyze Design 4.7M High Temperature thermistor", '70':"the 100K thermistor found in the bq Hephestos 2", '71':"100k / 4.7k Honeywell 135-104LAF-J01", '147':"Pt100 / 4.7k", '1047':"Pt1000 / 4.7k", '110':"Pt100 / 1k (non-standard)", '1010':"Pt1000 / 1k (non standard)", '-3':"Thermocouple + MAX31855 (only for sensor 0)", '-2':"Thermocouple + MAX6675 (only for sensor 0)", '-1':"Thermocouple + AD595",'998':"Dummy 1", '999':"Dummy 2" }
  */
-#define TEMP_SENSOR_0   70
-#define TEMP_SENSOR_1   0
-#define TEMP_SENSOR_2   0
-#define TEMP_SENSOR_3   0
+#define TEMP_SENSOR_0 70
+#define TEMP_SENSOR_1 0
+#define TEMP_SENSOR_2 0
+#define TEMP_SENSOR_3 0
+#define TEMP_SENSOR_4 0
 #define TEMP_SENSOR_BED 0
 
 // Dummy thermistor constant temperature readings, for use with 998 and 999
@@ -279,19 +280,21 @@
 // to check that the wiring to the thermistor is not broken.
 // Otherwise this would lead to the heater being powered on all the time.
 #define HEATER_0_MINTEMP 15
-//#define HEATER_1_MINTEMP 5
-//#define HEATER_2_MINTEMP 5
-//#define HEATER_3_MINTEMP 5
-//#define BED_MINTEMP 5
+#define HEATER_1_MINTEMP 5
+#define HEATER_2_MINTEMP 5
+#define HEATER_3_MINTEMP 5
+#define HEATER_4_MINTEMP 5
+#define BED_MINTEMP 5
 
 // When temperature exceeds max temp, your heater will be switched off.
 // This feature exists to protect your hotend from overheating accidentally, but *NOT* from thermistor short/failure!
 // You should use MINTEMP for thermistor short/failure protection.
 #define HEATER_0_MAXTEMP 250
-//#define HEATER_1_MAXTEMP 275
-//#define HEATER_2_MAXTEMP 275
-//#define HEATER_3_MAXTEMP 275
-//#define BED_MAXTEMP 150
+#define HEATER_1_MAXTEMP 275
+#define HEATER_2_MAXTEMP 275
+#define HEATER_3_MAXTEMP 275
+#define HEATER_4_MAXTEMP 275
+#define BED_MAXTEMP 150
 
 //===========================================================================
 //============================= PID Settings ================================
@@ -587,7 +590,7 @@
  *   is enabled then it also applies to Z_PROBE_SPEED_SLOW.
  */
 
-/*   Enable if you have a Z probe mounted on a sled like those designed by Charles Bell.  */
+// Enable if you have a Z probe mounted on a sled like those designed by Charles Bell.
 //#define Z_PROBE_SLED
 //#define SLED_DOCKING_OFFSET 5  // The extra distance the X axis must travel to pickup the sled. 0 should be fine but you can push it further if you'd like.
 
@@ -614,16 +617,16 @@
 #define Y_PROBE_OFFSET_FROM_EXTRUDER 15  // Y offset: -front +behind [the nozzle]
 #define Z_PROBE_OFFSET_FROM_EXTRUDER 0   // Z offset: -below +above  [the nozzle]
 
-/*   X and Y axis travel speed (mm/m) between probes */
+// X and Y axis travel speed (mm/m) between probes
 #define XY_PROBE_SPEED 8000
 
-/*   Speed for the first approach when double-probing (with PROBE_DOUBLE_TOUCH) */
+// Speed for the first approach when double-probing (with PROBE_DOUBLE_TOUCH)
 #define Z_PROBE_SPEED_FAST HOMING_FEEDRATE_Z
 
-/*   Speed for the "accurate" probe of each point  */
+// Speed for the "accurate" probe of each point
 #define Z_PROBE_SPEED_SLOW (Z_PROBE_SPEED_FAST / 2)
 
-/*   Use double touch for probing  */
+// Use double touch for probing
 //#define PROBE_DOUBLE_TOUCH
 
 /**
@@ -687,7 +690,7 @@
 #define Z_MIN_PROBE_USES_Z_MIN_ENDSTOP_PIN
 
 
-/* Enable Z Probe Repeatability test to see how accurate your probe is  */
+// Enable Z Probe Repeatability test to see how accurate your probe is
 //#define Z_MIN_PROBE_REPEATABILITY_TEST
 
 /**
@@ -707,7 +710,7 @@
 #define Z_CLEARANCE_DEPLOY_PROBE   0 // Z Clearance for Deploy/Stow
 #define Z_CLEARANCE_BETWEEN_PROBES 2 // Z Clearance between probe points
 
-/* For M851 give a range for adjusting the Z probe offset */
+// For M851 give a range for adjusting the Z probe offset
 #define Z_PROBE_OFFSET_RANGE_MIN -2
 #define Z_PROBE_OFFSET_RANGE_MAX  0
 
@@ -746,6 +749,7 @@
 #define INVERT_E1_DIR false
 #define INVERT_E2_DIR false
 #define INVERT_E3_DIR false
+#define INVERT_E4_DIR false
 
 // @section homing
 
@@ -1537,33 +1541,39 @@
 // With this option servos are powered only during movement, then turned off to prevent jitter.
 //#define DEACTIVATE_SERVOS_AFTER_MOVE
 
-/**********************************************************************\
- * Support for a filament diameter sensor
- * Also allows adjustment of diameter at print time (vs  at slicing)
- * Single extruder only at this point (extruder 0)
+/**
+ * Filament Width Sensor
  *
- * Motherboards
- * 34 - RAMPS1.4 - uses Analog input 5 on the AUX2 connector
- * 81 - Printrboard - Uses Analog input 2 on the Exp1 connector (version B,C,D,E)
- * 301 - Rambo  - uses Analog input 3
- * Note may require analog pins to be defined for different motherboards
- **********************************************************************/
-// Uncomment below to enable
+ * Measures the filament width in real-time and adjusts
+ * flow rate to compensate for any irregularities.
+ *
+ * Also allows the measured filament diameter to set the
+ * extrusion rate, so the slicer only has to specify the
+ * volume.
+ *
+ * Only a single extruder is supported at this time.
+ *
+ *  34 RAMPS_14    : Analog input 5 on the AUX2 connector
+ *  81 PRINTRBOARD : Analog input 2 on the Exp1 connector (version B,C,D,E)
+ * 301 RAMBO       : Analog input 3
+ *
+ * Note: May require analog pins to be defined for other boards.
+ */
 //#define FILAMENT_WIDTH_SENSOR
 
-#define DEFAULT_NOMINAL_FILAMENT_DIA 3.00  //Enter the diameter (in mm) of the filament generally used (3.0 mm or 1.75 mm) - this is then used in the slicer software.  Used for sensor reading validation
+#define DEFAULT_NOMINAL_FILAMENT_DIA 3.00   // (mm) Diameter of the filament generally used (3.0 or 1.75mm), also used in the slicer. Used to validate sensor reading.
 
 #if ENABLED(FILAMENT_WIDTH_SENSOR)
-  #define FILAMENT_SENSOR_EXTRUDER_NUM 0   //The number of the extruder that has the filament sensor (0,1,2)
-  #define MEASUREMENT_DELAY_CM        14   //measurement delay in cm.  This is the distance from filament sensor to middle of barrel
+  #define FILAMENT_SENSOR_EXTRUDER_NUM 0    // Index of the extruder that has the filament sensor (0,1,2,3)
+  #define MEASUREMENT_DELAY_CM        14    // (cm) The distance from the filament sensor to the melting chamber
 
-  #define MEASURED_UPPER_LIMIT         2.00  //upper limit factor used for sensor reading validation in mm
-  #define MEASURED_LOWER_LIMIT         1.60  //lower limit factor for sensor reading validation in mm
-  #define MAX_MEASUREMENT_DELAY       20     //delay buffer size in bytes (1 byte = 1cm)- limits maximum measurement delay allowable (must be larger than MEASUREMENT_DELAY_CM  and lower number saves RAM)
+  #define MEASURED_UPPER_LIMIT         2.00 // (mm) Upper limit used to validate sensor reading
+  #define MEASURED_LOWER_LIMIT         1.60 // (mm) Lower limit used to validate sensor reading
+  #define MAX_MEASUREMENT_DELAY       20    // (bytes) Buffer size for stored measurements (1 byte per cm). Must be larger than MEASUREMENT_DELAY_CM.
 
-  #define DEFAULT_MEASURED_FILAMENT_DIA  DEFAULT_NOMINAL_FILAMENT_DIA  //set measured to nominal initially
+  #define DEFAULT_MEASURED_FILAMENT_DIA DEFAULT_NOMINAL_FILAMENT_DIA // Set measured to nominal initially
 
-  //When using an LCD, uncomment the line below to display the Filament sensor data on the last line instead of status.  Status will appear for 5 sec.
+  // Display filament width on the LCD status line. Status messages will expire after 5 seconds.
   //#define FILAMENT_LCD_DISPLAY
 #endif
 
