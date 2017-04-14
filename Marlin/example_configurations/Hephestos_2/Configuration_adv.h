@@ -256,7 +256,6 @@
   #define INVERT_X2_VS_X_DIR true
 #endif
 
-
 // Dual Y Steppers
 // Uncomment this option to drive two Y axis motors.
 // The next unused E driver will be assigned to the second Y stepper.
@@ -407,8 +406,8 @@
  *                         known compatible chips: AD5206
  *    DAC_MOTOR_CURRENT_DEFAULT - used by PRINTRBOARD_REVF & RIGIDBOARD_V2
  *                         known compatible chips: MCP4728
- *    DIGIPOT_I2C_MOTOR_CURRENTS - used by 5DPRINT & AZTEEG_X3_PRO
- *                         known compatible chips: MCP4451
+ *    DIGIPOT_I2C_MOTOR_CURRENTS - used by 5DPRINT, AZTEEG_X3_PRO, MIGHTYBOARD_REVE
+ *                         known compatible chips: MCP4451, MCP4018
  *
  *  Motor currents can also be set by M907 - M910 and by the LCD.
  *    M907 - applies to all.
@@ -422,6 +421,7 @@
 
 // Uncomment to enable an I2C based DIGIPOT like on the Azteeg X3 Pro
 //#define DIGIPOT_I2C
+//#define DIGIPOT_MCP4018
 #define DIGIPOT_I2C_NUM_CHANNELS 8 // 5DPRINT: 4     AZTEEG_X3_PRO: 8
 // Actual motor currents in Amps, need as many here as DIGIPOT_I2C_NUM_CHANNELS
 #define DIGIPOT_I2C_MOTOR_CURRENTS {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0}  //  AZTEEG_X3_PRO
@@ -554,15 +554,22 @@
 
 // @section lcd
 
-// Babystepping enables the user to control the axis in tiny amounts, independently from the normal printing process
-// it can e.g. be used to change z-positions in the print startup phase in real-time
-// does not respect endstops!
+/**
+ * Babystepping enables movement of the axes by tiny increments without changing
+ * the current position values. This feature is used primarily to adjust the Z
+ * axis in the first layer of a print in real-time.
+ *
+ * Warning: Does not respect endstops!
+ */
 //#define BABYSTEPPING
 #if ENABLED(BABYSTEPPING)
-  #define BABYSTEP_XY  //not only z, but also XY in the menu. more clutter, more functions
-                       //not implemented for deltabots!
-  #define BABYSTEP_INVERT_Z false  //true for inverse movements in Z
-  #define BABYSTEP_MULTIPLICATOR 1 //faster movements
+  #define BABYSTEP_XY              // Also enable X/Y Babystepping. Not supported on DELTA!
+  #define BABYSTEP_INVERT_Z false  // Change if Z babysteps should go the other way
+  #define BABYSTEP_MULTIPLICATOR 1 // Babysteps are very small. Increase for faster motion.
+  //#define BABYSTEP_ZPROBE_OFFSET // Enable to combine M851 and Babystepping
+  //#define DOUBLECLICK_FOR_Z_BABYSTEPPING // Double-click on the Status Screen for Z Babystepping.
+  #define DOUBLECLICK_MAX_INTERVAL 1250 // Maximum interval between clicks, in milliseconds.
+                                        // Note: Extra time may be added to mitigate controller latency.
 #endif
 
 // @section extruder
@@ -1068,13 +1075,6 @@
  * Include capabilities in M115 output
  */
 //#define EXTENDED_CAPABILITIES_REPORT
-
-/**
- * Double-click the Encoder button on the Status Screen for Z Babystepping.
- */
-//#define DOUBLECLICK_FOR_Z_BABYSTEPPING
-#define DOUBLECLICK_MAX_INTERVAL 1250   // Maximum interval between clicks, in milliseconds.
-                                        // Note: You may need to add extra time to mitigate controller latency.
 
 /**
  * Volumetric extrusion default state
