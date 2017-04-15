@@ -593,6 +593,9 @@
  *   is enabled then it also applies to Z_PROBE_SPEED_SLOW.
  */
 
+// A probe that is deployed and stowed with a solenoid pin (SOL1_PIN)
+//#define SOLENOID_PROBE
+
 // Enable if you have a Z probe mounted on a sled like those designed by Charles Bell.
 //#define Z_PROBE_SLED
 //#define SLED_DOCKING_OFFSET 5  // The extra distance the X axis must travel to pickup the sled. 0 should be fine but you can push it further if you'd like.
@@ -691,7 +694,6 @@
 
 //#define Z_MIN_PROBE_ENDSTOP
 #define Z_MIN_PROBE_USES_Z_MIN_ENDSTOP_PIN
-
 
 // Enable Z Probe Repeatability test to see how accurate your probe is
 //#define Z_MIN_PROBE_REPEATABILITY_TEST
@@ -1521,7 +1523,7 @@
  * Enable support for an RGB LED connected to 5V digital pins, or
  * an RGB Strip connected to MOSFETs controlled by digital pins.
  *
- * Adds the M150 command to set the LED (or LED strip) color. 
+ * Adds the M150 command to set the LED (or LED strip) color.
  * If pins are PWM capable (e.g., 4, 5, 6, 11) then a range of
  * luminance values can be set from 0 to 255.
  *

@@ -817,7 +817,7 @@ void kill_screen(const char* lcd_msg) {
    *
    */
 
-  #if DISABLED(NO_WORKSPACE_OFFSETS)
+  #if HAS_M206_COMMAND
     /**
      * Set the home offset based on the current_position
      */
@@ -861,7 +861,7 @@ void kill_screen(const char* lcd_msg) {
           const int babystep_increment = (int32_t)encoderPosition * (BABYSTEP_MULTIPLICATOR);
           encoderPosition = 0;
 
-          const float new_zoffset = zprobe_zoffset + steps_to_mm[Z_AXIS] * babystep_increment;
+          const float new_zoffset = zprobe_zoffset + planner.steps_to_mm[Z_AXIS] * babystep_increment;
           if (WITHIN(new_zoffset, Z_PROBE_OFFSET_RANGE_MIN, Z_PROBE_OFFSET_RANGE_MAX)) {
 
             if (planner.abl_enabled)
@@ -1672,7 +1672,7 @@ void kill_screen(const char* lcd_msg) {
 
     #endif
 
-    #if DISABLED(NO_WORKSPACE_OFFSETS)
+    #if HAS_M206_COMMAND
       //
       // Set Home Offsets
       //
@@ -1770,14 +1770,20 @@ void kill_screen(const char* lcd_msg) {
       lcd_goto_screen(_lcd_calibrate_homing);
     }
 
+    #if ENABLED(DELTA_AUTO_CALIBRATION)
+      #define _DELTA_TOWER_MOVE_RADIUS DELTA_CALIBRATION_RADIUS
+    #else
+      #define _DELTA_TOWER_MOVE_RADIUS DELTA_PRINTABLE_RADIUS
+    #endif
+
     // Move directly to the tower position with uninterpolated moves
     // If we used interpolated moves it would cause this to become re-entrant
     void _goto_tower_pos(const float &a) {
       current_position[Z_AXIS] = max(Z_HOMING_HEIGHT, Z_CLEARANCE_BETWEEN_PROBES) + (DELTA_PRINTABLE_RADIUS) / 5;
       line_to_current(Z_AXIS);
 
-      current_position[X_AXIS] = a < 0 ? X_HOME_POS : sin(a) * -(DELTA_PRINTABLE_RADIUS);
-      current_position[Y_AXIS] = a < 0 ? Y_HOME_POS : cos(a) *  (DELTA_PRINTABLE_RADIUS);
+      current_position[X_AXIS] = a < 0 ? LOGICAL_X_POSITION(X_HOME_POS) : sin(a) * -(_DELTA_TOWER_MOVE_RADIUS);
+      current_position[Y_AXIS] = a < 0 ? LOGICAL_Y_POSITION(Y_HOME_POS) : cos(a) *  (_DELTA_TOWER_MOVE_RADIUS);
       line_to_current(Z_AXIS);
 
       current_position[Z_AXIS] = 4.0;
@@ -1797,6 +1803,10 @@ void kill_screen(const char* lcd_msg) {
     void lcd_delta_calibrate_menu() {
       START_MENU();
       MENU_BACK(MSG_MAIN);
+      #if ENABLED(DELTA_AUTO_CALIBRATION)
+        MENU_ITEM(gcode, MSG_DELTA_AUTO_CALIBRATE, PSTR("G33 C"));
+        MENU_ITEM(gcode, MSG_DELTA_HEIGHT_CALIBRATE, PSTR("G33 C1"));
+      #endif
       MENU_ITEM(submenu, MSG_AUTO_HOME, _lcd_delta_calibrate_home);
       if (axis_homed[Z_AXIS]) {
         MENU_ITEM(submenu, MSG_DELTA_CALIBRATE_X, _goto_tower_x);
@@ -2406,13 +2416,17 @@ void kill_screen(const char* lcd_msg) {
    * "Control" > "Motion" submenu
    *
    */
+  #if HAS_BED_PROBE && DISABLED(BABYSTEP_ZPROBE_OFFSET)
+    static void lcd_refresh_zprobe_zoffset() { refresh_zprobe_zoffset(); }
+  #endif
+
   void lcd_control_motion_menu() {
     START_MENU();
     MENU_BACK(MSG_CONTROL);
     #if ENABLED(BABYSTEP_ZPROBE_OFFSET)
       MENU_ITEM(submenu, MSG_ZPROBE_ZOFFSET, lcd_babystep_zoffset);
     #elif HAS_BED_PROBE
-      MENU_ITEM_EDIT_CALLBACK(float32, MSG_ZPROBE_ZOFFSET, &zprobe_zoffset, Z_PROBE_OFFSET_RANGE_MIN, Z_PROBE_OFFSET_RANGE_MAX, refresh_zprobe_zoffset);
+      MENU_ITEM_EDIT_CALLBACK(float32, MSG_ZPROBE_ZOFFSET, &zprobe_zoffset, Z_PROBE_OFFSET_RANGE_MIN, Z_PROBE_OFFSET_RANGE_MAX, lcd_refresh_zprobe_zoffset);
     #endif
     // Manual bed leveling, Bed Z:
     #if ENABLED(MESH_BED_LEVELING) && ENABLED(LCD_BED_LEVELING)

@@ -70,8 +70,8 @@
 //===========================================================================
 //============================= DELTA Printer ===============================
 //===========================================================================
-// For a Delta printer replace the configuration files with the files in the
-// example_configurations/delta directory.
+// For Delta printers start with one of the configuration files in the
+// example_configurations/delta directory and customize for your machine.
 //
 
 //===========================================================================
@@ -597,6 +597,9 @@
  *   This applies to the HOMING_FEEDRATE_Z and Z_PROBE_SPEED_FAST.  If PROBE_DOUBLE_TOUCH
  *   is enabled then it also applies to Z_PROBE_SPEED_SLOW.
  */
+
+// A probe that is deployed and stowed with a solenoid pin (SOL1_PIN)
+//#define SOLENOID_PROBE
 
 // Enable if you have a Z probe mounted on a sled like those designed by Charles Bell.
 //#define Z_PROBE_SLED
