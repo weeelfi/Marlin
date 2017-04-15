@@ -2,6 +2,19 @@
 
 This is my version of Marlin based on RC8 Bugfix.
 
+I've added a nextion display to my E3D BigBox Pro printer.
+
+This version of marlin does not used any of the default screens, but a Nextion 4.3inch display.
+
+Included in this repository is the firmware for the display.
+
+Please use any of this for your own purpose, just put my name in credits (Anthony Ballard).
+
+It comes as is, no guarentees and unfortunatly no support, don't have the time.
+
+https://www.youtube.com/watch?v=4NnOwrkCkYk
+
+
 
 [![Build Status](https://travis-ci.org/MarlinFirmware/Marlin.svg?branch=RCBugFix)](https://travis-ci.org/MarlinFirmware/Marlin)
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/2224/badge.svg)](https://scan.coverity.com/projects/2224)
