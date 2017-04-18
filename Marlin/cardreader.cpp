@@ -22,7 +22,12 @@
 
 #include "cardreader.h"
 
-#include "ultralcd.h"
+#ifdef EXPERIMENTAL_LCD
+  #include "experimental_lcd.h"
+#else
+  #include "ultralcd.h"
+#endif
+
 #include "stepper.h"
 #include "language.h"
 

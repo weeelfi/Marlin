@@ -112,8 +112,13 @@
 #define MSG_VOLUMETRIC_ENABLED              _UxGT("測容積mm³")  //"E in mm3" volumetric_enabled
 #define MSG_FILAMENT_DIAM                   _UxGT("絲料直徑")  //"Fil. Dia."
 #define MSG_CONTRAST                        _UxGT("LCD對比度")  //"LCD contrast"
+<<<<<<< HEAD
+#define MSG_STORE_EPROM                     _UxGT("保存設置")  //"Store memory"
+#define MSG_LOAD_EPROM                      _UxGT("裝載設置")  //"Load memory"
+=======
 #define MSG_STORE_EEPROM                    _UxGT("保存設置")  //"Store memory"
 #define MSG_LOAD_EEPROM                     _UxGT("裝載設置")  //"Load memory"
+>>>>>>> a7aa70e79aa99f303a24d63e01bf6ca6cc4728c9
 #define MSG_RESTORE_FAILSAFE                _UxGT("恢複安全值")  //"Restore failsafe"
 #define MSG_REFRESH                         _UxGT("刷新")  //"Refresh"
 #define MSG_WATCH                           _UxGT("資訊界面")  //"Info screen"

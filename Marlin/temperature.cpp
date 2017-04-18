@@ -25,7 +25,12 @@
  */
 
 #include "Marlin.h"
-#include "ultralcd.h"
+#if ENABLED(EXPERIMENTAL_LCD)
+  #include "experimental_lcd.h"
+#else
+  #include "ultralcd.h"
+#endif
+
 #include "temperature.h"
 #include "thermistortables.h"
 #include "language.h"

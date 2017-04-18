@@ -222,7 +222,12 @@
 
 #include "Marlin.h"
 
+#if ENABLED(EXPERIMENTAL_LCD)
+#include "experimental_lcd.h"
+#else
 #include "ultralcd.h"
+#endif
+
 #include "planner.h"
 #include "stepper.h"
 #include "endstops.h"
@@ -8485,6 +8490,11 @@ inline void gcode_M503() {
       SERIAL_ECHOPAIR(": ", zprobe_zoffset);
 
     SERIAL_EOL;
+	char message[20];
+	strcpy(message, MSG_ZPROBE_ZOFFSET);
+	strcat(message, ":");
+	strcat(message, ftostr43sign(zprobe_zoffset));
+	lcd_setstatus(message);
   }
 
 #endif // HAS_BED_PROBE

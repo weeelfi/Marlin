@@ -29,7 +29,11 @@
 #include "endstops.h"
 #include "temperature.h"
 #include "stepper.h"
+#if ENABLED(EXPERIMENTAL_LCD)
+#include "experimental_lcd.h"
+#else
 #include "ultralcd.h"
+#endif
 
 // TEST_ENDSTOP: test the old and the current status of an endstop
 #define TEST_ENDSTOP(ENDSTOP) (TEST(current_endstop_bits & old_endstop_bits, ENDSTOP))

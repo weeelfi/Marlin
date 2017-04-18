@@ -213,8 +213,8 @@
     #define POWER_SUPPLY 1
   #endif
   #if (POWER_SUPPLY == 1)     // 1 = ATX
-    #define PS_ON_AWAKE  LOW
-    #define PS_ON_ASLEEP HIGH
+    #define PS_ON_AWAKE  HIGH
+    #define PS_ON_ASLEEP LOW
   #elif (POWER_SUPPLY == 2)   // 2 = X-Box 360 203W
     #define PS_ON_AWAKE  HIGH
     #define PS_ON_ASLEEP LOW
