@@ -1208,7 +1208,7 @@
 //                 https://github.com/olikraus/U8glib_Arduino
 //
 //#define ULTRA_LCD   // Character based
-#define DOGLCD      // Full graphics display
+//#define DOGLCD      // Full graphics display
 
 //
 // SD CARD
@@ -1216,7 +1216,7 @@
 // SD Card support is disabled by default. If your controller has an SD slot,
 // you must uncomment the following option or it won't work.
 //
-#define SDSUPPORT
+//#define SDSUPPORT
 
 //
 // SD CARD: SPI SPEED
