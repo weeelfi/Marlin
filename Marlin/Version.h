@@ -35,7 +35,7 @@
   /**
    * Marlin release version identifier
    */
-  #define SHORT_BUILD_VERSION "1.1.0-RCBugFix"
+  #define SHORT_BUILD_VERSION "1.1.0-RCBugFix 8.8"
 
   /**
    * Verbose version identifier which should contain a reference to the location
@@ -48,7 +48,7 @@
    * here we define this default string as the date where the latest release
    * version was tagged.
    */
-  #define STRING_DISTRIBUTION_DATE "2016-12-06 12:00"
+  #define STRING_DISTRIBUTION_DATE "2016-04-20 07:18"
 
   /**
    * Required minimum Configuration.h and Configuration_adv.h file versions.
@@ -70,7 +70,7 @@
   /**
    * Defines a generic printer name to be output to the LCD after booting Marlin.
    */
-  #define MACHINE_NAME "3D Printer"
+  #define MACHINE_NAME "BigBox Pro"
 
   /**
    * The SOURCE_CODE_URL is the location where users will find the Marlin Source
