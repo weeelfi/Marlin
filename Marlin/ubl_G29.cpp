@@ -30,12 +30,10 @@
   #include "Marlin.h"
   #include "hex_print_routines.h"
   #include "configuration_store.h"
-  #include "planner.h"
   #include "ultralcd.h"
 
   #include <math.h>
 
-  void lcd_babystep_z();
   void lcd_return_to_status();
   bool lcd_clicked();
   void lcd_implementation_clear();
@@ -249,12 +247,12 @@
    *                    current state of the Unified Bed Leveling system in the EEPROM.
    *
    *   S #   Store      Store the current Mesh at the specified location in EEPROM. Activate this location
-   *                    for subsequent Load and Store operations. It will also store the current state of
-   *                    the Unified Bed Leveling system in the EEPROM.
+   *                    for subsequent Load and Store operations. Valid storage slot numbers begin at 0 and
+   *                    extend to a limit related to the available EEPROM storage.
    *
-   *   S -1  Store      Store the current Mesh as a print out that is suitable to be feed back into
-   *                    the system at a later date. The text generated can be saved and later sent by PronterFace or
-   *                    Repetier Host to reconstruct the current mesh on another machine.
+   *   S -1  Store      Store the current Mesh as a print out that is suitable to be feed back into the system
+   *                    at a later date. The GCode output can be saved and later replayed by the host software
+   *                    to reconstruct the current mesh on another machine.
    *
    *   T     3-Point    Perform a 3 Point Bed Leveling on the current Mesh
    *
@@ -305,7 +303,7 @@
 
   // The simple parameter flags and values are 'static' so parameter parsing can be in a support routine.
   static int g29_verbose_level, phase_value = -1, repetition_cnt,
-             storage_slot=0, map_type, grid_size;
+             storage_slot = 0, map_type, grid_size;
   static bool repeat_flag, c_flag, x_flag, y_flag;
   static float x_pos, y_pos, measured_z, card_thickness = 0.0, ubl_constant = 0.0;
 
@@ -330,13 +328,10 @@
     // Invalidate Mesh Points. This command is a little bit asymetrical because
     // it directly specifies the repetition count and does not use the 'R' parameter.
     if (code_seen('I')) {
-      int cnt = 0;
+      uint8_t cnt = 0;
       repetition_cnt = code_has_value() ? code_value_int() : 1;
       while (repetition_cnt--) {
-        if (cnt>20) {
-          cnt = 0;
-          idle();
-        }
+        if (cnt > 20) { cnt = 0; idle(); }
         const mesh_index_pair location = find_closest_mesh_point_of_type(REAL, x_pos, y_pos, 0, NULL, false);  // The '0' says we want to use the nozzle's position
         if (location.x_index < 0) {
           SERIAL_PROTOCOLLNPGM("Entire Mesh invalidated.\n");
@@ -381,7 +376,7 @@
     }
 
     if (code_seen('J')) {
-      if (grid_size<2 || grid_size>5) {
+      if (!WITHIN(grid_size, 2, 5)) {
         SERIAL_PROTOCOLLNPGM("ERROR - grid size must be between 2 and 5");
         return;
       }
@@ -579,8 +574,6 @@
       }
       ubl.load_mesh(storage_slot);
       ubl.state.eeprom_storage_slot = storage_slot;
-      if (storage_slot != ubl.state.eeprom_storage_slot)
-        ubl.store_state();
       SERIAL_PROTOCOLLNPGM("Done.\n");
     }
 
@@ -614,9 +607,6 @@
       }
       ubl.store_mesh(storage_slot);
       ubl.state.eeprom_storage_slot = storage_slot;
-      //
-      //  if (storage_slot != ubl.state.eeprom_storage_slot)
-      ubl.store_state();    // Always save an updated copy of the UBL State info
 
       SERIAL_PROTOCOLLNPGM("Done.\n");
     }
@@ -762,8 +752,8 @@
       location = find_closest_mesh_point_of_type(INVALID, lx, ly, 1, NULL, do_furthest);  // the '1' says we want the location to be relative to the probe
       if (location.x_index >= 0 && location.y_index >= 0) {
 
-        const float rawx = ubl.mesh_index_to_xpos[location.x_index],
-                    rawy = ubl.mesh_index_to_ypos[location.y_index];
+        const float rawx = pgm_read_float(&(ubl.mesh_index_to_xpos[location.x_index])),
+                    rawy = pgm_read_float(&(ubl.mesh_index_to_ypos[location.y_index]));
 
         // TODO: Change to use `position_is_reachable` (for SCARA-compatibility)
         if (!WITHIN(rawx, MIN_PROBE_X, MAX_PROBE_X) || !WITHIN(rawy, MIN_PROBE_Y, MAX_PROBE_Y)) {
@@ -910,8 +900,8 @@
       // It doesn't matter if the probe can't reach the NAN location. This is a manual probe.
       if (location.x_index < 0 && location.y_index < 0) continue;
 
-      const float rawx = ubl.mesh_index_to_xpos[location.x_index],
-                  rawy = ubl.mesh_index_to_ypos[location.y_index];
+      const float rawx = pgm_read_float(&(ubl.mesh_index_to_xpos[location.x_index])),
+                  rawy = pgm_read_float(&(ubl.mesh_index_to_ypos[location.y_index]));
 
       // TODO: Change to use `position_is_reachable` (for SCARA-compatibility)
       if (!WITHIN(rawx, X_MIN_POS, X_MAX_POS) || !WITHIN(rawy, Y_MIN_POS, Y_MAX_POS)) {
@@ -996,7 +986,7 @@
     repetition_cnt = 0;
     repeat_flag = code_seen('R');
     if (repeat_flag) {
-      repetition_cnt = code_has_value() ? code_value_int() : GRID_MAX_POINTS_X*GRID_MAX_POINTS_Y;
+      repetition_cnt = code_has_value() ? code_value_int() : (GRID_MAX_POINTS_X) * (GRID_MAX_POINTS_Y);
       if (repetition_cnt < 1) {
         SERIAL_PROTOCOLLNPGM("Invalid Repetition count.\n");
         return UBL_ERR;
@@ -1053,7 +1043,6 @@
     if (code_seen('A')) {     // Activate the Unified Bed Leveling System
       ubl.state.active = 1;
       SERIAL_PROTOCOLLNPGM("Unified Bed Leveling System activated.\n");
-      ubl.store_state();
     }
 
     c_flag = code_seen('C') && code_has_value();
@@ -1062,7 +1051,6 @@
     if (code_seen('D')) {     // Disable the Unified Bed Leveling System
       ubl.state.active = 0;
       SERIAL_PROTOCOLLNPGM("Unified Bed Leveling System de-activated.\n");
-      ubl.store_state();
     }
 
     #if ENABLED(ENABLE_LEVELING_FADE_HEIGHT)
@@ -1072,8 +1060,7 @@
           SERIAL_PROTOCOLLNPGM("?Bed Level Correction Fade Height Not Plausible.\n");
           return UBL_ERR;
         }
-        ubl.state.g29_correction_fade_height = fh;
-        ubl.state.g29_fade_height_multiplier = 1.0 / fh;
+        set_z_fade_height(fh);
       }
     #endif
 
@@ -1170,7 +1157,7 @@
     safe_delay(50);
 
     #if ENABLED(ENABLE_LEVELING_FADE_HEIGHT)
-      SERIAL_PROTOCOLLNPAIR("g29_correction_fade_height : ", ubl.state.g29_correction_fade_height);
+      SERIAL_PROTOCOLLNPAIR("planner.z_fade_height : ", planner.z_fade_height);
     #endif
 
     SERIAL_PROTOCOLPGM("z_offset: ");
@@ -1180,7 +1167,7 @@
 
     SERIAL_PROTOCOLPGM("X-Axis Mesh Points at: ");
     for (uint8_t i = 0; i < GRID_MAX_POINTS_X; i++) {
-      SERIAL_PROTOCOL_F(LOGICAL_X_POSITION(ubl.mesh_index_to_xpos[i]), 1);
+      SERIAL_PROTOCOL_F(LOGICAL_X_POSITION(pgm_read_float(&(ubl.mesh_index_to_xpos[i]))), 1);
       SERIAL_PROTOCOLPGM("  ");
       safe_delay(50);
     }
@@ -1188,7 +1175,7 @@
 
     SERIAL_PROTOCOLPGM("Y-Axis Mesh Points at: ");
     for (uint8_t i = 0; i < GRID_MAX_POINTS_Y; i++) {
-      SERIAL_PROTOCOL_F(LOGICAL_Y_POSITION(ubl.mesh_index_to_ypos[i]), 1);
+      SERIAL_PROTOCOL_F(LOGICAL_Y_POSITION(pgm_read_float(&(ubl.mesh_index_to_ypos[i]))), 1);
       SERIAL_PROTOCOLPGM("  ");
       safe_delay(50);
     }
@@ -1206,9 +1193,9 @@
     SERIAL_PROTOCOLLNPAIR("ubl_state_recursion_chk :", ubl_state_recursion_chk);
     SERIAL_EOL;
     safe_delay(50);
-    SERIAL_PROTOCOLLNPAIR("Free EEPROM space starts at: 0x", hex_word(ubl.eeprom_start));
+    SERIAL_PROTOCOLLNPAIR("Free EEPROM space starts at: ", hex_address((void*)ubl.eeprom_start));
 
-    SERIAL_PROTOCOLLNPAIR("end of EEPROM              : 0x", hex_word(E2END));
+    SERIAL_PROTOCOLLNPAIR("end of EEPROM              : ", hex_address((void*)E2END));
     safe_delay(50);
 
     SERIAL_PROTOCOLLNPAIR("sizeof(ubl) :  ", (int)sizeof(ubl));
@@ -1217,7 +1204,7 @@
     SERIAL_EOL;
     safe_delay(50);
 
-    SERIAL_PROTOCOLLNPAIR("EEPROM free for UBL: 0x", hex_word(k));
+    SERIAL_PROTOCOLLNPAIR("EEPROM free for UBL: ", hex_address((void*)k));
     safe_delay(50);
 
     SERIAL_PROTOCOLPAIR("EEPROM can hold ", k / sizeof(ubl.z_values));
@@ -1295,7 +1282,7 @@
     eeprom_read_block((void *)&tmp_z_values, (void *)j, sizeof(tmp_z_values));
 
     SERIAL_ECHOPAIR("Subtracting Mesh ", storage_slot);
-    SERIAL_PROTOCOLLNPAIR(" loaded from EEPROM address 0x", hex_word(j)); // Soon, we can remove the extra clutter of printing
+    SERIAL_PROTOCOLLNPAIR(" loaded from EEPROM address ", hex_address((void*)j)); // Soon, we can remove the extra clutter of printing
                                                                         // the address in the EEPROM where the Mesh is stored.
 
     for (uint8_t x = 0; x < GRID_MAX_POINTS_X; x++)
@@ -1326,8 +1313,8 @@
 
           // We only get here if we found a Mesh Point of the specified type
 
-          const float rawx = ubl.mesh_index_to_xpos[i], // Check if we can probe this mesh location
-                      rawy = ubl.mesh_index_to_ypos[j];
+          const float rawx = pgm_read_float(&(ubl.mesh_index_to_xpos[i])), // Check if we can probe this mesh location
+                      rawy = pgm_read_float(&(ubl.mesh_index_to_ypos[j]));
 
           // If using the probe as the reference there are some unreachable locations.
           // Prune them from the list and ignore them till the next Phase (manual nozzle probing).
@@ -1392,8 +1379,8 @@
       bit_clear(not_done, location.x_index, location.y_index);  // Mark this location as 'adjusted' so we will find a
                                                                 // different location the next time through the loop
 
-      const float rawx = ubl.mesh_index_to_xpos[location.x_index],
-                  rawy = ubl.mesh_index_to_ypos[location.y_index];
+      const float rawx = pgm_read_float(&(ubl.mesh_index_to_xpos[location.x_index])),
+                  rawy = pgm_read_float(&(ubl.mesh_index_to_ypos[location.y_index]));
 
       // TODO: Change to use `position_is_reachable` (for SCARA-compatibility)
       if (!WITHIN(rawx, X_MIN_POS, X_MAX_POS) || !WITHIN(rawy, Y_MIN_POS, Y_MAX_POS)) { // In theory, we don't need this check.
@@ -1488,7 +1475,8 @@
       //find min & max probeable points in the mesh
       for (xCount = 0; xCount < GRID_MAX_POINTS_X; xCount++) {
         for (yCount = 0; yCount < GRID_MAX_POINTS_Y; yCount++) {
-          if (WITHIN(ubl.mesh_index_to_xpos[xCount], MIN_PROBE_X, MAX_PROBE_X) && WITHIN(ubl.mesh_index_to_ypos[yCount], MIN_PROBE_Y, MAX_PROBE_Y)) {
+          if (WITHIN(pgm_read_float(&(ubl.mesh_index_to_xpos[xCount])), MIN_PROBE_X, MAX_PROBE_X) &&
+              WITHIN(pgm_read_float(&(ubl.mesh_index_to_ypos[yCount])), MIN_PROBE_Y, MAX_PROBE_Y)) {
             NOMORE(x_min, xCount);
             NOLESS(x_max, xCount);
             NOMORE(y_min, yCount);
@@ -1583,11 +1571,12 @@
           }
           //SERIAL_ECHOPAIR("\nCheckpoint: ", 5);
 
-          const float probeX = ubl.mesh_index_to_xpos[grid_G_index_to_xpos[xCount]],  //where we want the probe to be
-          probeY = ubl.mesh_index_to_ypos[grid_G_index_to_ypos[yCount]];
+          const float probeX = pgm_read_float(&(ubl.mesh_index_to_xpos[grid_G_index_to_xpos[xCount]])),  //where we want the probe to be
+                      probeY = pgm_read_float(&(ubl.mesh_index_to_ypos[grid_G_index_to_ypos[yCount]]));
           //SERIAL_ECHOPAIR("\nCheckpoint: ", 6);
 
-          const float measured_z = probe_pt(LOGICAL_X_POSITION(probeX), LOGICAL_Y_POSITION(probeY), code_seen('E'), (code_seen('V') && code_has_value()) ? code_value_int() : 0);  // takes into account the offsets
+          const float measured_z = probe_pt(LOGICAL_X_POSITION(probeX), LOGICAL_Y_POSITION(probeY), code_seen('E'),
+                                            (code_seen('V') && code_has_value()) ? code_value_int() : 0);  // takes into account the offsets
 
           //SERIAL_ECHOPAIR("\nmeasured_z: ", measured_z);
 
@@ -1601,7 +1590,7 @@
       restore_ubl_active_state_and_leave();
 
       // ?? ubl.has_control_of_lcd_panel = true;
-      //do_blocking_move_to_xy(ubl.mesh_index_to_xpos[grid_G_index_to_xpos[0]], ubl.mesh_index_to_ypos[grid_G_index_to_ypos[0]]);
+      //do_blocking_move_to_xy(pgm_read_float(&(ubl.mesh_index_to_xpos[grid_G_index_to_xpos[0]])),pgm_read_float(&(ubl.mesh_index_to_ypos[grid_G_index_to_ypos[0]])));
 
       // least squares code
       double xxx5[] = { 0,50,100,150,200,      20,70,120,165,195,     0,50,100,150,200,      0,55,100,150,200,      0,65,100,150,205 },
