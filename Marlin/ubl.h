@@ -40,32 +40,42 @@
     float distance; // When populated, the distance from the search location
   } mesh_index_pair;
 
+  // ubl.cpp
+
+  void bit_clear(uint16_t bits[16], uint8_t x, uint8_t y);
+  void bit_set(uint16_t bits[16], uint8_t x, uint8_t y);
+  bool is_bit_set(uint16_t bits[16], uint8_t x, uint8_t y);
+
+  // ubl_motion.cpp
+
+  void debug_current_and_destination(const char * const title);
+  void ubl_line_to_destination(const float&, uint8_t);
+
+  // ubl_G29.cpp
+
   enum MeshPointType { INVALID, REAL, SET_IN_BITMAP };
 
   void dump(char * const str, const float &f);
-  bool ubl_lcd_clicked();
   void probe_entire_mesh(const float&, const float&, const bool, const bool, const bool);
-  void debug_current_and_destination(const char * const title);
-  void ubl_line_to_destination(const float&, uint8_t);
   void manually_probe_remaining_mesh(const float&, const float&, const float&, const float&, const bool);
   float measure_business_card_thickness(const float&);
   mesh_index_pair find_closest_mesh_point_of_type(const MeshPointType, const float&, const float&, const bool, unsigned int[16], bool);
   void shift_mesh_height();
+  void fine_tune_mesh(const float&, const float&, const bool);
   bool g29_parameter_parsing();
   void g29_what_command();
   void g29_eeprom_dump();
   void g29_compare_current_mesh_to_stored_mesh();
-  void fine_tune_mesh(const float&, const float&, const bool);
-  void bit_clear(uint16_t bits[16], uint8_t x, uint8_t y);
-  void bit_set(uint16_t bits[16], uint8_t x, uint8_t y);
-  bool is_bit_set(uint16_t bits[16], uint8_t x, uint8_t y);
-  char *ftostr43sign(const float&, char);
 
+  // External references
+
+  char *ftostr43sign(const float&, char);
+  bool ubl_lcd_clicked();
+  void home_all_axes();
   void gcode_G26();
-  void gcode_G28();
   void gcode_G29();
 
-  extern int ubl_cnt;
+  extern uint8_t ubl_cnt;
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -73,7 +83,6 @@
     extern char lcd_status_message[];
     void lcd_quick_feedback();
   #endif
-
 
   #define MESH_X_DIST (float(UBL_MESH_MAX_X - (UBL_MESH_MIN_X)) / float(GRID_MAX_POINTS_X - 1))
   #define MESH_Y_DIST (float(UBL_MESH_MAX_Y - (UBL_MESH_MIN_Y)) / float(GRID_MAX_POINTS_Y - 1))
@@ -91,11 +100,6 @@
 
     public:
 
-//
-// Please do not put STATIC qualifiers in front of ANYTHING in this file.   You WILL cause problems by doing that.
-// The GCC optimizer inlines static functions and this DRAMATICALLY increases the size of the stack frame of 
-// functions that call STATIC functions.
-//
       void find_mean_mesh_height();
       void shift_mesh_height();
       void probe_entire_mesh(const float &lx, const float &ly, const bool do_ubl_mesh_map, const bool stow_probe, bool do_furthest);
@@ -104,23 +108,13 @@
       void manually_probe_remaining_mesh(const float &lx, const float &ly, const float &z_clearance, const float &card_thickness, const bool do_ubl_mesh_map);
       void save_ubl_active_state_and_disable();
       void restore_ubl_active_state_and_leave();
-      void g29_what_command(); 
-//
-// Please do not put STATIC qualifiers in front of ANYTHING in this file.   You WILL cause problems by doing that.
-// The GCC optimizer inlines static functions and this DRAMATICALLY increases the size of the stack frame of 
-// functions that call STATIC functions.
-//
+      void g29_what_command();
       void g29_eeprom_dump() ;
       void g29_compare_current_mesh_to_stored_mesh();
       void fine_tune_mesh(const float &lx, const float &ly, const bool do_ubl_mesh_map);
       void smart_fill_mesh();
       void display_map(const int);
       void reset();
-//
-// Please do not put STATIC qualifiers in front of ANYTHING in this file.   You WILL cause problems by doing that.
-// The GCC optimizer inlines static functions and this DRAMATICALLY increases the size of the stack frame of 
-// functions that call STATIC functions.
-//
       void invalidate();
       void store_state();
       void load_state();
@@ -134,25 +128,27 @@
 
       // 15 is the maximum nubmer of grid points supported + 1 safety margin for now,
       // until determinism prevails
-      constexpr static float mesh_index_to_xpos[16] PROGMEM = { UBL_MESH_MIN_X+0*(MESH_X_DIST),
-                                UBL_MESH_MIN_X+1*(MESH_X_DIST), UBL_MESH_MIN_X+2*(MESH_X_DIST),
-                                UBL_MESH_MIN_X+3*(MESH_X_DIST), UBL_MESH_MIN_X+4*(MESH_X_DIST),
-                                UBL_MESH_MIN_X+5*(MESH_X_DIST), UBL_MESH_MIN_X+6*(MESH_X_DIST),
-                                UBL_MESH_MIN_X+7*(MESH_X_DIST), UBL_MESH_MIN_X+8*(MESH_X_DIST),
-                                UBL_MESH_MIN_X+9*(MESH_X_DIST), UBL_MESH_MIN_X+10*(MESH_X_DIST),
-                                UBL_MESH_MIN_X+11*(MESH_X_DIST), UBL_MESH_MIN_X+12*(MESH_X_DIST),
-                                UBL_MESH_MIN_X+13*(MESH_X_DIST), UBL_MESH_MIN_X+14*(MESH_X_DIST),
-                                UBL_MESH_MIN_X+15*(MESH_X_DIST) };
+      constexpr static float mesh_index_to_xpos[16] PROGMEM = {
+                                UBL_MESH_MIN_X +  0 * (MESH_X_DIST), UBL_MESH_MIN_X +  1 * (MESH_X_DIST),
+                                UBL_MESH_MIN_X +  2 * (MESH_X_DIST), UBL_MESH_MIN_X +  3 * (MESH_X_DIST),
+                                UBL_MESH_MIN_X +  4 * (MESH_X_DIST), UBL_MESH_MIN_X +  5 * (MESH_X_DIST),
+                                UBL_MESH_MIN_X +  6 * (MESH_X_DIST), UBL_MESH_MIN_X +  7 * (MESH_X_DIST),
+                                UBL_MESH_MIN_X +  8 * (MESH_X_DIST), UBL_MESH_MIN_X +  9 * (MESH_X_DIST),
+                                UBL_MESH_MIN_X + 10 * (MESH_X_DIST), UBL_MESH_MIN_X + 11 * (MESH_X_DIST),
+                                UBL_MESH_MIN_X + 12 * (MESH_X_DIST), UBL_MESH_MIN_X + 13 * (MESH_X_DIST),
+                                UBL_MESH_MIN_X + 14 * (MESH_X_DIST), UBL_MESH_MIN_X + 15 * (MESH_X_DIST)
+                              };
 
-      constexpr static float mesh_index_to_ypos[16] PROGMEM = { UBL_MESH_MIN_Y+0*(MESH_Y_DIST),
-                                UBL_MESH_MIN_Y+1*(MESH_Y_DIST), UBL_MESH_MIN_Y+2*(MESH_Y_DIST),
-                                UBL_MESH_MIN_Y+3*(MESH_Y_DIST), UBL_MESH_MIN_Y+4*(MESH_Y_DIST),
-                                UBL_MESH_MIN_Y+5*(MESH_Y_DIST), UBL_MESH_MIN_Y+6*(MESH_Y_DIST),
-                                UBL_MESH_MIN_Y+7*(MESH_Y_DIST), UBL_MESH_MIN_Y+8*(MESH_Y_DIST),
-                                UBL_MESH_MIN_Y+9*(MESH_Y_DIST), UBL_MESH_MIN_Y+10*(MESH_Y_DIST),
-                                UBL_MESH_MIN_Y+11*(MESH_Y_DIST), UBL_MESH_MIN_Y+12*(MESH_Y_DIST),
-                                UBL_MESH_MIN_Y+13*(MESH_Y_DIST), UBL_MESH_MIN_Y+14*(MESH_Y_DIST),
-                                UBL_MESH_MIN_Y+15*(MESH_Y_DIST) };
+      constexpr static float mesh_index_to_ypos[16] PROGMEM = {
+                                UBL_MESH_MIN_Y +  0 * (MESH_Y_DIST), UBL_MESH_MIN_Y +  1 * (MESH_Y_DIST),
+                                UBL_MESH_MIN_Y +  2 * (MESH_Y_DIST), UBL_MESH_MIN_Y +  3 * (MESH_Y_DIST),
+                                UBL_MESH_MIN_Y +  4 * (MESH_Y_DIST), UBL_MESH_MIN_Y +  5 * (MESH_Y_DIST),
+                                UBL_MESH_MIN_Y +  6 * (MESH_Y_DIST), UBL_MESH_MIN_Y +  7 * (MESH_Y_DIST),
+                                UBL_MESH_MIN_Y +  8 * (MESH_Y_DIST), UBL_MESH_MIN_Y +  9 * (MESH_Y_DIST),
+                                UBL_MESH_MIN_Y + 10 * (MESH_Y_DIST), UBL_MESH_MIN_Y + 11 * (MESH_Y_DIST),
+                                UBL_MESH_MIN_Y + 12 * (MESH_Y_DIST), UBL_MESH_MIN_Y + 13 * (MESH_Y_DIST),
+                                UBL_MESH_MIN_Y + 14 * (MESH_Y_DIST), UBL_MESH_MIN_Y + 15 * (MESH_Y_DIST)
+                              };
 
       static bool g26_debug_flag, has_control_of_lcd_panel;
 
@@ -163,11 +159,6 @@
 
       unified_bed_leveling();
 
-//
-// Please do not put STATIC qualifiers in front of ANYTHING in this file.   You WILL cause problems by doing that.
-// The GCC optimizer inlines static functions and this DRAMATICALLY increases the size of the stack frame of 
-// functions that call STATIC functions.
-//
       FORCE_INLINE void set_z(const int8_t px, const int8_t py, const float &z) { z_values[px][py] = z; }
         int8_t get_cell_index_x(const float &x) {
         const int8_t cx = (x - (UBL_MESH_MIN_X)) * (1.0 / (MESH_X_DIST));
@@ -184,11 +175,6 @@
                                                             // that is OK because something else should be keeping that from
                                                             // happening and should not be worried about at this level.
 
-//
-// Please do not put STATIC qualifiers in front of ANYTHING in this file.   You WILL cause problems by doing that.
-// The GCC optimizer inlines static functions and this DRAMATICALLY increases the size of the stack frame of 
-// functions that call STATIC functions.
-//
       int8_t find_closest_x_index(const float &x) {
         const int8_t px = (x - (UBL_MESH_MIN_X) + (MESH_X_DIST) * 0.5) * (1.0 / (MESH_X_DIST));
         return WITHIN(px, 0, GRID_MAX_POINTS_X - 1) ? px : -1;
@@ -217,11 +203,6 @@
       FORCE_INLINE float calc_z0(const float &a0, const float &a1, const float &z1, const float &a2, const float &z2) {
         return z1 + (z2 - z1) * (a0 - a1) / (a2 - a1);
       }
-//
-// Please do not put STATIC qualifiers in front of ANYTHING in this file.   You WILL cause problems by doing that.
-// The GCC optimizer inlines static functions and this DRAMATICALLY increases the size of the stack frame of 
-// functions that call STATIC functions.
-//
 
       /**
        * z_correction_for_x_on_horizontal_mesh_line is an optimization for
