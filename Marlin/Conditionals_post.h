@@ -120,6 +120,13 @@
   #endif
 
   /**
+   * If DELTA_HEIGHT isn't defined use the old setting
+   */
+  #if ENABLED(DELTA) && !defined(DELTA_HEIGHT)
+    #define DELTA_HEIGHT Z_HOME_POS
+  #endif
+
+  /**
    * Auto Bed Leveling and Z Probe Repeatability Test
    */
   #define HOMING_Z_WITH_PROBE (HAS_BED_PROBE && Z_HOME_DIR < 0 && ENABLED(Z_MIN_PROBE_USES_Z_MIN_ENDSTOP_PIN))
@@ -406,7 +413,10 @@
     #endif
   #endif
 
-  #define IS_Z2_OR_PROBE(P) (P == Z2_MIN_PIN || P == Z2_MAX_PIN || P == Z_MIN_PROBE_PIN)
+  // Is an endstop plug used for the Z2 endstop or the bed probe?
+  #define IS_Z2_OR_PROBE(A,M) ( \
+       (ENABLED(Z_DUAL_ENDSTOPS) && Z2_USE_ENDSTOP == _##A##M##_) \
+    || (ENABLED(Z_MIN_PROBE_ENDSTOP) && Z_MIN_PROBE_PIN == A##_##M##_PIN ) )
 
   /**
    * Set ENDSTOPPULLUPS for active endstop switches
@@ -496,12 +506,12 @@
   #define HAS_SOLENOID_4    (PIN_EXISTS(SOL4))
 
   // Endstops and bed probe
-  #define HAS_X_MIN (PIN_EXISTS(X_MIN) && !IS_Z2_OR_PROBE(X_MIN_PIN))
-  #define HAS_X_MAX (PIN_EXISTS(X_MAX) && !IS_Z2_OR_PROBE(X_MAX_PIN))
-  #define HAS_Y_MIN (PIN_EXISTS(Y_MIN) && !IS_Z2_OR_PROBE(Y_MIN_PIN))
-  #define HAS_Y_MAX (PIN_EXISTS(Y_MAX) && !IS_Z2_OR_PROBE(Y_MAX_PIN))
-  #define HAS_Z_MIN (PIN_EXISTS(Z_MIN) && !IS_Z2_OR_PROBE(Z_MIN_PIN))
-  #define HAS_Z_MAX (PIN_EXISTS(Z_MAX) && !IS_Z2_OR_PROBE(Z_MAX_PIN))
+  #define HAS_X_MIN (PIN_EXISTS(X_MIN) && !IS_Z2_OR_PROBE(X,MIN))
+  #define HAS_X_MAX (PIN_EXISTS(X_MAX) && !IS_Z2_OR_PROBE(X,MAX))
+  #define HAS_Y_MIN (PIN_EXISTS(Y_MIN) && !IS_Z2_OR_PROBE(Y,MIN))
+  #define HAS_Y_MAX (PIN_EXISTS(Y_MAX) && !IS_Z2_OR_PROBE(Y,MAX))
+  #define HAS_Z_MIN (PIN_EXISTS(Z_MIN) && !IS_Z2_OR_PROBE(Z,MIN))
+  #define HAS_Z_MAX (PIN_EXISTS(Z_MAX) && !IS_Z2_OR_PROBE(Z,MAX))
   #define HAS_Z2_MIN (PIN_EXISTS(Z2_MIN))
   #define HAS_Z2_MAX (PIN_EXISTS(Z2_MAX))
   #define HAS_Z_MIN_PROBE_PIN (PIN_EXISTS(Z_MIN_PROBE))
@@ -548,9 +558,9 @@
 
   // Other fans
   #define HAS_FAN0 (PIN_EXISTS(FAN))
-  #define HAS_FAN1 (PIN_EXISTS(FAN1) && CONTROLLERFAN_PIN != FAN1_PIN && E0_AUTO_FAN_PIN != FAN1_PIN && E1_AUTO_FAN_PIN != FAN1_PIN && E2_AUTO_FAN_PIN != FAN1_PIN && E3_AUTO_FAN_PIN != FAN1_PIN)
-  #define HAS_FAN2 (PIN_EXISTS(FAN2) && CONTROLLERFAN_PIN != FAN2_PIN && E0_AUTO_FAN_PIN != FAN2_PIN && E1_AUTO_FAN_PIN != FAN2_PIN && E2_AUTO_FAN_PIN != FAN2_PIN && E3_AUTO_FAN_PIN != FAN2_PIN)
-  #define HAS_CONTROLLERFAN (PIN_EXISTS(CONTROLLERFAN))
+  #define HAS_FAN1 (PIN_EXISTS(FAN1) && CONTROLLER_FAN_PIN != FAN1_PIN && E0_AUTO_FAN_PIN != FAN1_PIN && E1_AUTO_FAN_PIN != FAN1_PIN && E2_AUTO_FAN_PIN != FAN1_PIN && E3_AUTO_FAN_PIN != FAN1_PIN)
+  #define HAS_FAN2 (PIN_EXISTS(FAN2) && CONTROLLER_FAN_PIN != FAN2_PIN && E0_AUTO_FAN_PIN != FAN2_PIN && E1_AUTO_FAN_PIN != FAN2_PIN && E2_AUTO_FAN_PIN != FAN2_PIN && E3_AUTO_FAN_PIN != FAN2_PIN)
+  #define HAS_CONTROLLER_FAN (PIN_EXISTS(CONTROLLER_FAN))
 
   // Servos
   #define HAS_SERVOS (defined(NUM_SERVOS) && NUM_SERVOS > 0)
@@ -691,56 +701,32 @@
    * Delta radius/rod trimmers/angle trimmers
    */
   #if ENABLED(DELTA)
+    #ifndef DELTA_CALIBRATION_RADIUS
+      #define DELTA_CALIBRATION_RADIUS DELTA_PRINTABLE_RADIUS - 10
+    #endif
     #ifndef DELTA_ENDSTOP_ADJ
-      #define DELTA_ENDSTOP_ADJ { 0 }
+      #define DELTA_ENDSTOP_ADJ { 0, 0, 0 }
     #endif
-    #ifndef DELTA_RADIUS_TRIM_TOWER_1
-      #define DELTA_RADIUS_TRIM_TOWER_1 0.0
+    #ifndef DELTA_TOWER_ANGLE_TRIM
+      #define DELTA_TOWER_ANGLE_TRIM {0, 0, 0}
     #endif
-    #ifndef DELTA_RADIUS_TRIM_TOWER_2
-      #define DELTA_RADIUS_TRIM_TOWER_2 0.0
+    #ifndef DELTA_RADIUS_TRIM_TOWER
+      #define DELTA_RADIUS_TRIM_TOWER {0, 0, 0}
     #endif
-    #ifndef DELTA_RADIUS_TRIM_TOWER_3
-      #define DELTA_RADIUS_TRIM_TOWER_3 0.0
-    #endif
-    #ifndef DELTA_DIAGONAL_ROD_TRIM_TOWER_1
-      #define DELTA_DIAGONAL_ROD_TRIM_TOWER_1 0.0
-    #endif
-    #ifndef DELTA_DIAGONAL_ROD_TRIM_TOWER_2
-      #define DELTA_DIAGONAL_ROD_TRIM_TOWER_2 0.0
-    #endif
-    #ifndef DELTA_DIAGONAL_ROD_TRIM_TOWER_3
-      #define DELTA_DIAGONAL_ROD_TRIM_TOWER_3 0.0
-    #endif
-    #ifndef DELTA_TOWER_ANGLE_TRIM_1
-      #define DELTA_TOWER_ANGLE_TRIM_1 0.0
-    #endif
-    #ifndef DELTA_TOWER_ANGLE_TRIM_2
-      #define DELTA_TOWER_ANGLE_TRIM_2 0.0
-    #endif
-    #ifndef DELTA_TOWER_ANGLE_TRIM_3
-      #define DELTA_TOWER_ANGLE_TRIM_3 0.0
-    #endif
-    #if ENABLED(DELTA_AUTO_CALIBRATION)
-      #ifndef H_FACTOR
-        #define H_FACTOR 1.00
-      #endif
-      #ifndef R_FACTOR
-        #define R_FACTOR -2.25
-      #endif
+    #ifndef DELTA_DIAGONAL_ROD_TRIM_TOWER
+      #define DELTA_DIAGONAL_ROD_TRIM_TOWER {0, 0, 0}
     #endif
   #endif
 
   /**
-   * Set ABL options based on the specific type of leveling
+   * Set granular options based on the specific type of leveling
    */
   #define ABL_PLANAR (ENABLED(AUTO_BED_LEVELING_LINEAR) || ENABLED(AUTO_BED_LEVELING_3POINT))
   #define ABL_GRID   (ENABLED(AUTO_BED_LEVELING_LINEAR) || ENABLED(AUTO_BED_LEVELING_BILINEAR))
   #define HAS_ABL    (ABL_PLANAR || ABL_GRID || ENABLED(AUTO_BED_LEVELING_UBL))
-
-  #define PLANNER_LEVELING      (HAS_ABL || ENABLED(MESH_BED_LEVELING))
+  #define HAS_LEVELING          (HAS_ABL || ENABLED(MESH_BED_LEVELING))
+  #define PLANNER_LEVELING      (ABL_PLANAR || ABL_GRID || ENABLED(MESH_BED_LEVELING))
   #define HAS_PROBING_PROCEDURE (HAS_ABL || ENABLED(Z_MIN_PROBE_REPEATABILITY_TEST))
-
   #if HAS_PROBING_PROCEDURE
     #define PROBE_BED_WIDTH abs(RIGHT_PROBE_BED_POSITION - (LEFT_PROBE_BED_POSITION))
     #define PROBE_BED_HEIGHT abs(BACK_PROBE_BED_POSITION - (FRONT_PROBE_BED_POSITION))

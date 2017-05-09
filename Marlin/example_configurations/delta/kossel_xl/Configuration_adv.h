@@ -32,18 +32,6 @@
  */
 #ifndef CONFIGURATION_ADV_H
 #define CONFIGURATION_ADV_H
-
-/**
- *
- *  ***********************************
- *  **  ATTENTION TO ALL DEVELOPERS  **
- *  ***********************************
- *
- * You must increment this version number for every significant change such as,
- * but not limited to: ADD, DELETE RENAME OR REPURPOSE any directive/option.
- *
- * Note: Update also Version.h !
- */
 #define CONFIGURATION_ADV_H_VERSION 010100
 
 // @section temperature
@@ -186,12 +174,19 @@
 #define TEMP_SENSOR_AD595_OFFSET 0.0
 #define TEMP_SENSOR_AD595_GAIN   1.0
 
-//This is for controlling a fan to cool down the stepper drivers
-//it will turn on when any driver is enabled
-//and turn off after the set amount of seconds from last driver being disabled again
-#define CONTROLLERFAN_PIN -1 //Pin used for the fan to cool controller (-1 to disable)
-#define CONTROLLERFAN_SECS 60 //How many seconds, after all motors were disabled, the fan should run
-#define CONTROLLERFAN_SPEED 255  // == full speed
+/**
+ * Controller Fan
+ * To cool down the stepper drivers and MOSFETs.
+ *
+ * The fan will turn on automatically whenever any stepper is enabled
+ * and turn off after a set period after all steppers are turned off.
+ */
+//#define USE_CONTROLLER_FAN
+#if ENABLED(USE_CONTROLLER_FAN)
+  //#define CONTROLLER_FAN_PIN FAN1_PIN  // Set a custom pin for the controller fan
+  #define CONTROLLERFAN_SECS 60          // Duration in seconds for the fan to run after all motors are disabled
+  #define CONTROLLERFAN_SPEED 255        // 255 == full speed
+#endif
 
 // When first starting the main fan, run it at full speed for the
 // given number of milliseconds.  This gets the fan spinning reliably
@@ -430,25 +425,6 @@
 #define DIGIPOT_I2C_NUM_CHANNELS 8 // 5DPRINT: 4     AZTEEG_X3_PRO: 8
 // Actual motor currents in Amps, need as many here as DIGIPOT_I2C_NUM_CHANNELS
 #define DIGIPOT_I2C_MOTOR_CURRENTS {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0}  //  AZTEEG_X3_PRO
-
-//===========================================================================
-//============================== Delta Settings =============================
-//===========================================================================
-
-#if ENABLED(DELTA_AUTO_CALIBRATION)
-  /**
-   * Set the height short (H-10) with M665 Hx.xx.
-   * Set the delta_radius offset (R-5, R-10, R+5, R+10) with M665 Rx.xx.
-   * Run G33 Cx V3 (C2, C-2) with different values for C and R
-   * Take the average for R_FACTOR and maximum for H_FACTOR.
-   * Run the tests with default values!!!
-   */
-  //#define DELTA_CALIBRATE_EXPERT_MODE
-
-  // Remove the comments of the folling 2 lines to overide default values
-  //#define H_FACTOR  1.02 //  1.0 < H_FACTOR <  1.11, default  1.00
-  //#define R_FACTOR -3.95 // -6.7 < R_FACTOR < -2.25, default -2.25
-#endif
 
 //===========================================================================
 //=============================Additional Features===========================
