@@ -34,13 +34,13 @@
   #include "buzzer.h"
 #endif
 
-#if ENABLED(BLTOUCH)
-  #include "endstops.h"
-#endif
-
 #if ENABLED(PRINTCOUNTER)
   #include "printcounter.h"
   #include "duration_t.h"
+#endif
+
+#if ENABLED(BLTOUCH)
+  #include "endstops.h"
 #endif
 
 int lcd_preheat_hotend_temp[2], lcd_preheat_bed_temp[2], lcd_preheat_fan_speed[2];
@@ -162,6 +162,7 @@ uint16_t max_display_update_time = 0;
 
   #if ENABLED(MESH_BED_LEVELING) && ENABLED(LCD_BED_LEVELING)
     #include "mesh_bed_leveling.h"
+    extern void mesh_probing_done();
   #endif
 
   ////////////////////////////////////////////
@@ -701,8 +702,9 @@ void kill_screen(const char* lcd_msg) {
       clear_command_queue();
       quickstop_stepper();
       print_job_timer.stop();
-      #if ENABLED(AUTOTEMP)
-        thermalManager.autotempShutdown();
+      thermalManager.disable_all_heaters();
+      #if FAN_COUNT > 0
+        for (uint8_t i = 0; i < FAN_COUNT; i++) fanSpeeds[i] = 0;
       #endif
       wait_for_heatup = false;
       LCD_MESSAGEPGM(MSG_PRINT_ABORTED);
@@ -722,6 +724,28 @@ void kill_screen(const char* lcd_msg) {
     }
 
   #endif // MENU_ITEM_CASE_LIGHT
+
+  #if ENABLED(BLTOUCH)
+
+    /**
+     *
+     * "BLTouch" submenu
+     *
+     */
+    static void bltouch_menu() {
+      START_MENU();
+      //
+      // ^ Main
+      //
+      MENU_BACK(MSG_MAIN);
+      MENU_ITEM(gcode, MSG_BLTOUCH_RESET, PSTR("M280 P" STRINGIFY(Z_ENDSTOP_SERVO_NR) " S" STRINGIFY(BLTOUCH_RESET)));
+      MENU_ITEM(gcode, MSG_BLTOUCH_SELFTEST, PSTR("M280 P" STRINGIFY(Z_ENDSTOP_SERVO_NR) " S" STRINGIFY(BLTOUCH_SELFTEST)));
+      MENU_ITEM(gcode, MSG_BLTOUCH_DEPLOY, PSTR("M280 P" STRINGIFY(Z_ENDSTOP_SERVO_NR) " S" STRINGIFY(BLTOUCH_DEPLOY)));
+      MENU_ITEM(gcode, MSG_BLTOUCH_STOW, PSTR("M280 P" STRINGIFY(Z_ENDSTOP_SERVO_NR) " S" STRINGIFY(BLTOUCH_STOW)));
+      END_MENU();
+    }
+
+  #endif // BLTOUCH
 
   #if ENABLED(LCD_PROGRESS_BAR_TEST)
 
@@ -792,8 +816,7 @@ void kill_screen(const char* lcd_msg) {
     #endif
 
     #if ENABLED(BLTOUCH)
-      if (!endstops.z_probe_enabled && TEST_BLTOUCH())
-        MENU_ITEM(gcode, MSG_BLTOUCH_RESET, PSTR("M280 P" STRINGIFY(Z_ENDSTOP_SERVO_NR) " S" STRINGIFY(BLTOUCH_RESET)));
+      MENU_ITEM(submenu, MSG_BLTOUCH, bltouch_menu);
     #endif
 
     if (planner.movesplanned() || IS_SD_PRINTING) {
@@ -1157,14 +1180,14 @@ void kill_screen(const char* lcd_msg) {
     }
   #endif
 
-  constexpr int heater_maxtemp[HOTENDS] = ARRAY_BY_HOTENDS(HEATER_0_MAXTEMP, HEATER_1_MAXTEMP, HEATER_2_MAXTEMP, HEATER_3_MAXTEMP, HEATER_4_MAXTEMP);
+  constexpr int16_t heater_maxtemp[HOTENDS] = ARRAY_BY_HOTENDS(HEATER_0_MAXTEMP, HEATER_1_MAXTEMP, HEATER_2_MAXTEMP, HEATER_3_MAXTEMP, HEATER_4_MAXTEMP);
 
   /**
    *
    * "Prepare" submenu items
    *
    */
-  void _lcd_preheat(int endnum, const float temph, const float tempb, const int fan) {
+  void _lcd_preheat(const int endnum, const int16_t temph, const int16_t tempb, const int16_t fan) {
     if (temph > 0) thermalManager.setTargetHotend(min(heater_maxtemp[endnum], temph), endnum);
     #if TEMP_SENSOR_BED != 0
       if (tempb >= 0) thermalManager.setTargetBed(tempb);
@@ -1518,9 +1541,9 @@ void kill_screen(const char* lcd_msg) {
           // Enable leveling, if needed
           #if ENABLED(MESH_BED_LEVELING)
 
+            lcd_synchronize();
             mbl.set_has_mesh(true);
-            mbl.set_reactivate(true);
-            enqueue_and_echo_commands_P(PSTR("G28"));
+            mesh_probing_done();
 
           #elif ENABLED(AUTO_BED_LEVELING_UBL)
 
@@ -1799,20 +1822,14 @@ void kill_screen(const char* lcd_msg) {
       lcd_goto_screen(_lcd_calibrate_homing);
     }
 
-    #if ENABLED(DELTA_AUTO_CALIBRATION)
-      #define _DELTA_TOWER_MOVE_RADIUS DELTA_CALIBRATION_RADIUS
-    #else
-      #define _DELTA_TOWER_MOVE_RADIUS DELTA_PRINTABLE_RADIUS
-    #endif
-
     // Move directly to the tower position with uninterpolated moves
     // If we used interpolated moves it would cause this to become re-entrant
     void _goto_tower_pos(const float &a) {
       current_position[Z_AXIS] = max(Z_HOMING_HEIGHT, Z_CLEARANCE_BETWEEN_PROBES) + (DELTA_PRINTABLE_RADIUS) / 5;
       line_to_current(Z_AXIS);
 
-      current_position[X_AXIS] = a < 0 ? LOGICAL_X_POSITION(X_HOME_POS) : sin(a) * -(_DELTA_TOWER_MOVE_RADIUS);
-      current_position[Y_AXIS] = a < 0 ? LOGICAL_Y_POSITION(Y_HOME_POS) : cos(a) *  (_DELTA_TOWER_MOVE_RADIUS);
+      current_position[X_AXIS] = a < 0 ? LOGICAL_X_POSITION(X_HOME_POS) : cos(RADIANS(a)) * delta_calibration_radius;
+      current_position[Y_AXIS] = a < 0 ? LOGICAL_Y_POSITION(Y_HOME_POS) : sin(RADIANS(a)) * delta_calibration_radius;
       line_to_current(Z_AXIS);
 
       current_position[Z_AXIS] = 4.0;
@@ -1824,17 +1841,17 @@ void kill_screen(const char* lcd_msg) {
       lcd_goto_screen(lcd_move_z);
     }
 
-    void _goto_tower_x() { _goto_tower_pos(RADIANS(120)); }
-    void _goto_tower_y() { _goto_tower_pos(RADIANS(240)); }
-    void _goto_tower_z() { _goto_tower_pos(0); }
+    void _goto_tower_x() { _goto_tower_pos(210); }
+    void _goto_tower_y() { _goto_tower_pos(330); }
+    void _goto_tower_z() { _goto_tower_pos(90); }
     void _goto_center()  { _goto_tower_pos(-1); }
 
     void lcd_delta_calibrate_menu() {
       START_MENU();
       MENU_BACK(MSG_MAIN);
       #if ENABLED(DELTA_AUTO_CALIBRATION)
-        MENU_ITEM(gcode, MSG_DELTA_AUTO_CALIBRATE, PSTR("G33 C"));
-        MENU_ITEM(gcode, MSG_DELTA_HEIGHT_CALIBRATE, PSTR("G33 C1"));
+        MENU_ITEM(gcode, MSG_DELTA_AUTO_CALIBRATE, PSTR("G33"));
+        MENU_ITEM(gcode, MSG_DELTA_HEIGHT_CALIBRATE, PSTR("G33 P1 A"));
       #endif
       MENU_ITEM(submenu, MSG_AUTO_HOME, _lcd_delta_calibrate_home);
       if (axis_homed[Z_AXIS]) {
@@ -2864,15 +2881,15 @@ void kill_screen(const char* lcd_msg) {
     // Portions from STATIC_ITEM...
     #define HOTEND_STATUS_ITEM() do { \
       if (_menuLineNr == _thisItemNr) { \
-        if (lcdDrawUpdate) \
+        if (lcdDrawUpdate) { \
           lcd_implementation_drawmenu_static(_lcdLineNr, PSTR(MSG_FILAMENT_CHANGE_NOZZLE), false, true); \
-        lcd_implementation_hotend_status(_lcdLineNr); \
+          lcd_implementation_hotend_status(_lcdLineNr); \
+        } \
         if (_skipStatic && encoderLine <= _thisItemNr) { \
           encoderPosition += ENCODER_STEPS_PER_MENU_ITEM; \
           ++encoderLine; \
         } \
-        else \
-          lcdDrawUpdate = LCDVIEW_KEEP_REDRAWING; \
+        lcdDrawUpdate = LCDVIEW_KEEP_REDRAWING; \
       } \
       ++_thisItemNr; \
     } while(0)

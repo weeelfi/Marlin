@@ -233,7 +233,7 @@ void CardReader::initsd() {
     #define SPI_SPEED SPI_FULL_SPEED
   #endif
 
-  if (!card.init(SPI_SPEED,SDSS)
+  if (!card.init(SPI_SPEED, SDSS)
     #if defined(LCD_SDSS) && (LCD_SDSS != SDSS)
       && !card.init(SPI_SPEED, LCD_SDSS)
     #endif
@@ -552,7 +552,7 @@ void CardReader::checkautostart(bool force) {
 
   bool found = false;
   while (root.readDir(p, NULL) > 0) {
-    for (int8_t i = 0; i < (int8_t)strlen((char*)p.name); i++) p.name[i] = tolower(p.name[i]);
+    for (int8_t i = (int8_t)strlen((char*)p.name); i--;) p.name[i] = tolower(p.name[i]);
     if (p.name[9] != '~' && strncmp((char*)p.name, autoname, 5) == 0) {
       openAndPrintFile(autoname);
       found = true;

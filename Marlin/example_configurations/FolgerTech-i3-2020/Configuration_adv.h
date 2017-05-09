@@ -32,18 +32,6 @@
  */
 #ifndef CONFIGURATION_ADV_H
 #define CONFIGURATION_ADV_H
-
-/**
- *
- *  ***********************************
- *  **  ATTENTION TO ALL DEVELOPERS  **
- *  ***********************************
- *
- * You must increment this version number for every significant change such as,
- * but not limited to: ADD, DELETE RENAME OR REPURPOSE any directive/option.
- *
- * Note: Update also Version.h !
- */
 #define CONFIGURATION_ADV_H_VERSION 010100
 
 // @section temperature
@@ -186,12 +174,19 @@
 #define TEMP_SENSOR_AD595_OFFSET 0.0
 #define TEMP_SENSOR_AD595_GAIN   1.0
 
-//This is for controlling a fan to cool down the stepper drivers
-//it will turn on when any driver is enabled
-//and turn off after the set amount of seconds from last driver being disabled again
-#define CONTROLLERFAN_PIN -1 //Pin used for the fan to cool controller (-1 to disable)
-#define CONTROLLERFAN_SECS 60 //How many seconds, after all motors were disabled, the fan should run
-#define CONTROLLERFAN_SPEED 255  // == full speed
+/**
+ * Controller Fan
+ * To cool down the stepper drivers and MOSFETs.
+ *
+ * The fan will turn on automatically whenever any stepper is enabled
+ * and turn off after a set period after all steppers are turned off.
+ */
+//#define USE_CONTROLLER_FAN
+#if ENABLED(USE_CONTROLLER_FAN)
+  //#define CONTROLLER_FAN_PIN FAN1_PIN  // Set a custom pin for the controller fan
+  #define CONTROLLERFAN_SECS 60          // Duration in seconds for the fan to run after all motors are disabled
+  #define CONTROLLERFAN_SPEED 255        // 255 == full speed
+#endif
 
 // When first starting the main fan, run it at full speed for the
 // given number of milliseconds.  This gets the fan spinning reliably
@@ -327,7 +322,7 @@
   // Default x offset in duplication mode (typically set to half print bed width)
   #define DEFAULT_DUPLICATION_X_OFFSET 100
 
-#endif //DUAL_X_CARRIAGE
+#endif // DUAL_X_CARRIAGE
 
 // Activate a solenoid on the active extruder with M380. Disable all with M381.
 // Define SOL0_PIN, SOL1_PIN, etc., for each extruder that has a solenoid.
@@ -419,7 +414,6 @@
  *    M909, M910 & LCD - only PRINTRBOARD_REVF & RIGIDBOARD_V2
  */
 //#define PWM_MOTOR_CURRENT {1300, 1300, 1250} // Values in milliamps
-
 //#define DIGIPOT_MOTOR_CURRENT {135,135,135,135,135} // Values 0-255 (RAMBO 135 = ~0.75A, 185 = ~1A)
 //#define DAC_MOTOR_CURRENT_DEFAULT { 70, 80, 90, 80 } // Default drive percent - X, Y, Z, E axis
 
@@ -587,10 +581,9 @@
  */
 #define BABYSTEPPING
 #if ENABLED(BABYSTEPPING)
-  #define BABYSTEP_XY  //not only z, but also XY in the menu. more clutter, more functions
-                       //not implemented for deltabots!
-  #define BABYSTEP_INVERT_Z false  //true for inverse movements in Z
-  #define BABYSTEP_MULTIPLICATOR 2 //faster movements
+  #define BABYSTEP_XY              // Also enable X/Y Babystepping. Not supported on DELTA!
+  #define BABYSTEP_INVERT_Z false  // Change if Z babysteps should go the other way
+  #define BABYSTEP_MULTIPLICATOR 2 // Babysteps are very small. Increase for faster motion.
   //#define BABYSTEP_ZPROBE_OFFSET // Enable to combine M851 and Babystepping
   #define DOUBLECLICK_FOR_Z_BABYSTEPPING // Double-click on the Status Screen for Z Babystepping.
   #define DOUBLECLICK_MAX_INTERVAL 1250 // Maximum interval between clicks, in milliseconds.
@@ -1034,7 +1027,6 @@
  * (https://github.com/ameyer/Arduino-L6470)
  */
 
-
 //#define HAVE_L6470DRIVER
 #if ENABLED(HAVE_L6470DRIVER)
 
@@ -1154,7 +1146,6 @@
  * Include capabilities in M115 output
  */
 //#define EXTENDED_CAPABILITIES_REPORT
-
 
 /**
  * Volumetric extrusion default state
