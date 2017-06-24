@@ -33,6 +33,8 @@
 
 #include "temperature.h"
 #include "thermistortables.h"
+#include "ultralcd.h"
+#include "planner.h"
 #include "language.h"
 
 #if ENABLED(HEATER_0_USES_MAX6675)
@@ -69,19 +71,13 @@ Temperature thermalManager;
 
 float Temperature::current_temperature[HOTENDS] = { 0.0 },
       Temperature::current_temperature_bed = 0.0;
-int   Temperature::current_temperature_raw[HOTENDS] = { 0 },
-      Temperature::target_temperature[HOTENDS] = { 0 },
-      Temperature::current_temperature_bed_raw = 0,
-      Temperature::target_temperature_bed = 0;
+int16_t Temperature::current_temperature_raw[HOTENDS] = { 0 },
+        Temperature::target_temperature[HOTENDS] = { 0 },
+        Temperature::current_temperature_bed_raw = 0,
+        Temperature::target_temperature_bed = 0;
 
 #if ENABLED(TEMP_SENSOR_1_AS_REDUNDANT)
   float Temperature::redundant_temperature = 0.0;
-#endif
-
-uint8_t Temperature::soft_pwm_bed;
-
-#if ENABLED(FAN_SOFT_PWM)
-  uint8_t Temperature::fanSpeedSoftPwm[FAN_COUNT];
 #endif
 
 #if ENABLED(PIDTEMP)
@@ -165,47 +161,57 @@ volatile bool Temperature::temp_meas_ready = false;
   millis_t Temperature::next_bed_check_ms;
 #endif
 
-unsigned long Temperature::raw_temp_value[MAX_EXTRUDERS] = { 0 };
-unsigned long Temperature::raw_temp_bed_value = 0;
+uint16_t Temperature::raw_temp_value[MAX_EXTRUDERS] = { 0 },
+         Temperature::raw_temp_bed_value = 0;
 
 // Init min and max temp with extreme values to prevent false errors during startup
-int Temperature::minttemp_raw[HOTENDS] = ARRAY_BY_HOTENDS(HEATER_0_RAW_LO_TEMP , HEATER_1_RAW_LO_TEMP , HEATER_2_RAW_LO_TEMP, HEATER_3_RAW_LO_TEMP, HEATER_4_RAW_LO_TEMP),
-    Temperature::maxttemp_raw[HOTENDS] = ARRAY_BY_HOTENDS(HEATER_0_RAW_HI_TEMP , HEATER_1_RAW_HI_TEMP , HEATER_2_RAW_HI_TEMP, HEATER_3_RAW_HI_TEMP, HEATER_4_RAW_HI_TEMP),
-    Temperature::minttemp[HOTENDS] = { 0 },
-    Temperature::maxttemp[HOTENDS] = ARRAY_BY_HOTENDS1(16383);
+int16_t Temperature::minttemp_raw[HOTENDS] = ARRAY_BY_HOTENDS(HEATER_0_RAW_LO_TEMP , HEATER_1_RAW_LO_TEMP , HEATER_2_RAW_LO_TEMP, HEATER_3_RAW_LO_TEMP, HEATER_4_RAW_LO_TEMP),
+        Temperature::maxttemp_raw[HOTENDS] = ARRAY_BY_HOTENDS(HEATER_0_RAW_HI_TEMP , HEATER_1_RAW_HI_TEMP , HEATER_2_RAW_HI_TEMP, HEATER_3_RAW_HI_TEMP, HEATER_4_RAW_HI_TEMP),
+        Temperature::minttemp[HOTENDS] = { 0 },
+        Temperature::maxttemp[HOTENDS] = ARRAY_BY_HOTENDS1(16383);
 
 #ifdef MAX_CONSECUTIVE_LOW_TEMPERATURE_ERROR_ALLOWED
-  int Temperature::consecutive_low_temperature_error[HOTENDS] = { 0 };
+  uint8_t Temperature::consecutive_low_temperature_error[HOTENDS] = { 0 };
 #endif
 
 #ifdef MILLISECONDS_PREHEAT_TIME
-  unsigned long Temperature::preheat_end_time[HOTENDS] = { 0 };
+  millis_t Temperature::preheat_end_time[HOTENDS] = { 0 };
 #endif
 
 #ifdef BED_MINTEMP
-  int Temperature::bed_minttemp_raw = HEATER_BED_RAW_LO_TEMP;
+  int16_t Temperature::bed_minttemp_raw = HEATER_BED_RAW_LO_TEMP;
 #endif
 
 #ifdef BED_MAXTEMP
-  int Temperature::bed_maxttemp_raw = HEATER_BED_RAW_HI_TEMP;
+  int16_t Temperature::bed_maxttemp_raw = HEATER_BED_RAW_HI_TEMP;
 #endif
 
 #if ENABLED(FILAMENT_WIDTH_SENSOR)
-  int Temperature::meas_shift_index;  // Index of a delayed sample in buffer
+  int16_t Temperature::meas_shift_index;  // Index of a delayed sample in buffer
 #endif
 
 #if HAS_AUTO_FAN
   millis_t Temperature::next_auto_fan_check_ms = 0;
 #endif
 
-uint8_t Temperature::soft_pwm[HOTENDS];
+uint8_t Temperature::soft_pwm_amount[HOTENDS],
+        Temperature::soft_pwm_amount_bed;
 
 #if ENABLED(FAN_SOFT_PWM)
-  uint8_t Temperature::soft_pwm_fan[FAN_COUNT];
+  uint8_t Temperature::soft_pwm_amount_fan[FAN_COUNT],
+          Temperature::soft_pwm_count_fan[FAN_COUNT];
 #endif
 
 #if ENABLED(FILAMENT_WIDTH_SENSOR)
   int Temperature::current_raw_filwidth = 0;  //Holds measured filament diameter - one extruder only
+#endif
+
+#if ENABLED(PROBING_HEATERS_OFF)
+  bool Temperature::paused;
+  int16_t Temperature::paused_hotend_temp[HOTENDS];
+  #if HAS_TEMP_BED
+    int16_t Temperature::paused_bed_temp;
+  #endif
 #endif
 
 #if HAS_PID_HEATING
@@ -250,13 +256,13 @@ uint8_t Temperature::soft_pwm[HOTENDS];
 
     #if HAS_PID_FOR_BOTH
       if (hotend < 0)
-        soft_pwm_bed = bias = d = (MAX_BED_POWER) >> 1;
+        soft_pwm_amount_bed = bias = d = (MAX_BED_POWER) >> 1;
       else
-        soft_pwm[hotend] = bias = d = (PID_MAX) >> 1;
+        soft_pwm_amount[hotend] = bias = d = (PID_MAX) >> 1;
     #elif ENABLED(PIDTEMP)
-      soft_pwm[hotend] = bias = d = (PID_MAX) >> 1;
+      soft_pwm_amount[hotend] = bias = d = (PID_MAX) >> 1;
     #else
-      soft_pwm_bed = bias = d = (MAX_BED_POWER) >> 1;
+      soft_pwm_amount_bed = bias = d = (MAX_BED_POWER) >> 1;
     #endif
 
     wait_for_heatup = true;
@@ -294,13 +300,13 @@ uint8_t Temperature::soft_pwm[HOTENDS];
             heating = false;
             #if HAS_PID_FOR_BOTH
               if (hotend < 0)
-                soft_pwm_bed = (bias - d) >> 1;
+                soft_pwm_amount_bed = (bias - d) >> 1;
               else
-                soft_pwm[hotend] = (bias - d) >> 1;
+                soft_pwm_amount[hotend] = (bias - d) >> 1;
             #elif ENABLED(PIDTEMP)
-              soft_pwm[hotend] = (bias - d) >> 1;
+              soft_pwm_amount[hotend] = (bias - d) >> 1;
             #elif ENABLED(PIDTEMPBED)
-              soft_pwm_bed = (bias - d) >> 1;
+              soft_pwm_amount_bed = (bias - d) >> 1;
             #endif
             t1 = ms;
             t_high = t1 - t2;
@@ -363,13 +369,13 @@ uint8_t Temperature::soft_pwm[HOTENDS];
             }
             #if HAS_PID_FOR_BOTH
               if (hotend < 0)
-                soft_pwm_bed = (bias + d) >> 1;
+                soft_pwm_amount_bed = (bias + d) >> 1;
               else
-                soft_pwm[hotend] = (bias + d) >> 1;
+                soft_pwm_amount[hotend] = (bias + d) >> 1;
             #elif ENABLED(PIDTEMP)
-              soft_pwm[hotend] = (bias + d) >> 1;
+              soft_pwm_amount[hotend] = (bias + d) >> 1;
             #else
-              soft_pwm_bed = (bias + d) >> 1;
+              soft_pwm_amount_bed = (bias + d) >> 1;
             #endif
             cycles++;
             min = temp;
@@ -462,7 +468,7 @@ void Temperature::updatePID() {
 }
 
 int Temperature::getHeaterPower(int heater) {
-  return heater < 0 ? soft_pwm_bed : soft_pwm[heater];
+  return heater < 0 ? soft_pwm_amount_bed : soft_pwm_amount[heater];
 }
 
 #if HAS_AUTO_FAN
@@ -713,7 +719,7 @@ void Temperature::manage_heater() {
     float pid_output = get_pid_output(e);
 
     // Check if temperature is within the correct range
-    soft_pwm[e] = (current_temperature[e] > minttemp[e] || is_preheating(e)) && current_temperature[e] < maxttemp[e] ? (int)pid_output >> 1 : 0;
+    soft_pwm_amount[e] = (current_temperature[e] > minttemp[e] || is_preheating(e)) && current_temperature[e] < maxttemp[e] ? (int)pid_output >> 1 : 0;
 
     // Check if the temperature is failing to increase
     #if WATCH_HOTENDS
@@ -771,15 +777,14 @@ void Temperature::manage_heater() {
     if (filament_sensor) {
       meas_shift_index = filwidth_delay_index[0] - meas_delay_cm;
       if (meas_shift_index < 0) meas_shift_index += MAX_MEASUREMENT_DELAY + 1;  //loop around buffer if needed
+      meas_shift_index = constrain(meas_shift_index, 0, MAX_MEASUREMENT_DELAY);
 
       // Get the delayed info and add 100 to reconstitute to a percent of
       // the nominal filament diameter then square it to get an area
-      meas_shift_index = constrain(meas_shift_index, 0, MAX_MEASUREMENT_DELAY);
-      float vm = pow((measurement_delay[meas_shift_index] + 100.0) * 0.01, 2);
-      NOLESS(vm, 0.01);
-      volumetric_multiplier[FILAMENT_SENSOR_EXTRUDER_NUM] = vm;
+      const float vmroot = measurement_delay[meas_shift_index] * 0.01 + 1.0;
+      volumetric_multiplier[FILAMENT_SENSOR_EXTRUDER_NUM] = vmroot <= 0.1 ? 0.01 : sq(vmroot);
     }
-  #endif //FILAMENT_WIDTH_SENSOR
+  #endif // FILAMENT_WIDTH_SENSOR
 
   #if DISABLED(PIDTEMPBED)
     if (PENDING(ms, next_bed_check_ms)) return;
@@ -795,27 +800,27 @@ void Temperature::manage_heater() {
     #if ENABLED(PIDTEMPBED)
       float pid_output = get_pid_output_bed();
 
-      soft_pwm_bed = WITHIN(current_temperature_bed, BED_MINTEMP, BED_MAXTEMP) ? (int)pid_output >> 1 : 0;
+      soft_pwm_amount_bed = WITHIN(current_temperature_bed, BED_MINTEMP, BED_MAXTEMP) ? (int)pid_output >> 1 : 0;
 
     #elif ENABLED(BED_LIMIT_SWITCHING)
       // Check if temperature is within the correct band
       if (WITHIN(current_temperature_bed, BED_MINTEMP, BED_MAXTEMP)) {
         if (current_temperature_bed >= target_temperature_bed + BED_HYSTERESIS)
-          soft_pwm_bed = 0;
+          soft_pwm_amount_bed = 0;
         else if (current_temperature_bed <= target_temperature_bed - (BED_HYSTERESIS))
-          soft_pwm_bed = MAX_BED_POWER >> 1;
+          soft_pwm_amount_bed = MAX_BED_POWER >> 1;
       }
       else {
-        soft_pwm_bed = 0;
+        soft_pwm_amount_bed = 0;
         WRITE_HEATER_BED(LOW);
       }
     #else // !PIDTEMPBED && !BED_LIMIT_SWITCHING
       // Check if temperature is within the correct range
       if (WITHIN(current_temperature_bed, BED_MINTEMP, BED_MAXTEMP)) {
-        soft_pwm_bed = current_temperature_bed < target_temperature_bed ? MAX_BED_POWER >> 1 : 0;
+        soft_pwm_amount_bed = current_temperature_bed < target_temperature_bed ? MAX_BED_POWER >> 1 : 0;
       }
       else {
-        soft_pwm_bed = 0;
+        soft_pwm_amount_bed = 0;
         WRITE_HEATER_BED(LOW);
       }
     #endif
@@ -966,8 +971,8 @@ void Temperature::updateTemperaturesFromRawValues() {
  */
 void Temperature::init() {
 
-  #if MB(RUMBA) && ((TEMP_SENSOR_0==-1)||(TEMP_SENSOR_1==-1)||(TEMP_SENSOR_2==-1)||(TEMP_SENSOR_BED==-1))
-    //disable RUMBA JTAG in case the thermocouple extension is plugged on top of JTAG connector
+  #if MB(RUMBA) && (TEMP_SENSOR_0 == -1 || TEMP_SENSOR_1 == -1 || TEMP_SENSOR_2 == -1 || TEMP_SENSOR_BED == -1)
+    // Disable RUMBA JTAG in case the thermocouple extension is plugged on top of JTAG connector
     MCUCR = _BV(JTD);
     MCUCR = _BV(JTD);
   #endif
@@ -1199,6 +1204,14 @@ void Temperature::init() {
       #endif
     }
   #endif //BED_MAXTEMP
+
+  #if ENABLED(PROBING_HEATERS_OFF)
+    paused = false;
+    ZERO(paused_hotend_temp);
+    #if HAS_TEMP_BED
+      paused_bed_temp = 0;
+    #endif
+  #endif
 }
 
 #if WATCH_HOTENDS
@@ -1248,7 +1261,7 @@ void Temperature::init() {
     millis_t Temperature::thermal_runaway_bed_timer;
   #endif
 
-  void Temperature::thermal_runaway_protection(Temperature::TRState* state, millis_t* timer, float temperature, float target_temperature, int heater_id, int period_seconds, int hysteresis_degc) {
+  void Temperature::thermal_runaway_protection(Temperature::TRState* state, millis_t* timer, float current, float target, int heater_id, int period_seconds, int hysteresis_degc) {
 
     static float tr_target_temperature[HOTENDS + 1] = { 0.0 };
 
@@ -1258,17 +1271,17 @@ void Temperature::init() {
         if (heater_id < 0) SERIAL_ECHOPGM("bed"); else SERIAL_ECHO(heater_id);
         SERIAL_ECHOPAIR(" ;  State:", *state);
         SERIAL_ECHOPAIR(" ;  Timer:", *timer);
-        SERIAL_ECHOPAIR(" ;  Temperature:", temperature);
-        SERIAL_ECHOPAIR(" ;  Target Temp:", target_temperature);
+        SERIAL_ECHOPAIR(" ;  Temperature:", current);
+        SERIAL_ECHOPAIR(" ;  Target Temp:", target);
         SERIAL_EOL;
     */
 
     int heater_index = heater_id >= 0 ? heater_id : HOTENDS;
 
     // If the target temperature changes, restart
-    if (tr_target_temperature[heater_index] != target_temperature) {
-      tr_target_temperature[heater_index] = target_temperature;
-      *state = target_temperature > 0 ? TRFirstHeating : TRInactive;
+    if (tr_target_temperature[heater_index] != target) {
+      tr_target_temperature[heater_index] = target;
+      *state = target > 0 ? TRFirstHeating : TRInactive;
     }
 
     switch (*state) {
@@ -1276,11 +1289,11 @@ void Temperature::init() {
       case TRInactive: break;
       // When first heating, wait for the temperature to be reached then go to Stable state
       case TRFirstHeating:
-        if (temperature < tr_target_temperature[heater_index]) break;
+        if (current < tr_target_temperature[heater_index]) break;
         *state = TRStable;
       // While the temperature is stable watch for a bad temperature
       case TRStable:
-        if (temperature >= tr_target_temperature[heater_index] - hysteresis_degc) {
+        if (current >= tr_target_temperature[heater_index] - hysteresis_degc) {
           *timer = millis() + period_seconds * 1000UL;
           break;
         }
@@ -1294,15 +1307,29 @@ void Temperature::init() {
 #endif // THERMAL_PROTECTION_HOTENDS || THERMAL_PROTECTION_BED
 
 void Temperature::disable_all_heaters() {
+
+  #if ENABLED(AUTOTEMP)
+    planner.autotemp_enabled = false;
+  #endif
+
   HOTEND_LOOP() setTargetHotend(0, e);
   setTargetBed(0);
+
+  // Unpause and reset everything
+  #if ENABLED(PROBING_HEATERS_OFF)
+    paused = false;
+    ZERO(paused_hotend_temp);
+    #if HAS_TEMP_BED
+      paused_bed_temp = 0;
+    #endif
+  #endif
 
   // If all heaters go down then for sure our print job has stopped
   print_job_timer.stop();
 
   #define DISABLE_HEATER(NR) { \
     setTargetHotend(0, NR); \
-    soft_pwm[NR] = 0; \
+    soft_pwm_amount[NR] = 0; \
     WRITE_HEATER_ ##NR (LOW); \
   }
 
@@ -1324,12 +1351,38 @@ void Temperature::disable_all_heaters() {
 
   #if HAS_TEMP_BED
     target_temperature_bed = 0;
-    soft_pwm_bed = 0;
+    soft_pwm_amount_bed = 0;
     #if HAS_HEATER_BED
       WRITE_HEATER_BED(LOW);
     #endif
   #endif
 }
+
+#if ENABLED(PROBING_HEATERS_OFF)
+
+  void Temperature::pause(const bool p) {
+    if (p != paused) {
+      paused = p;
+      if (p) {
+        HOTEND_LOOP() {
+          paused_hotend_temp[e] = degTargetHotend(e);
+          setTargetHotend(0, e);
+        }
+        #if HAS_TEMP_BED
+          paused_bed_temp = degTargetBed();
+          setTargetBed(0);
+        #endif
+      }
+      else {
+        HOTEND_LOOP() setTargetHotend(paused_hotend_temp[e], e);
+        #if HAS_TEMP_BED
+          setTargetBed(paused_bed_temp);
+        #endif
+      }
+    }
+  }
+
+#endif // PROBING_HEATERS_OFF
 
 #if ENABLED(HEATER_0_USES_MAX6675)
 
@@ -1401,7 +1454,7 @@ void Temperature::disable_all_heaters() {
       max6675_temp >>= MAX6675_DISCARD_BITS;
       #if ENABLED(MAX6675_IS_MAX31855)
         // Support negative temperature
-        if (max6675_temp & 0x00002000) max6675_temp |= 0xffffc000;
+        if (max6675_temp & 0x00002000) max6675_temp |= 0xFFFFC000;
       #endif
 
     return (int)max6675_temp;
@@ -1555,11 +1608,11 @@ void Temperature::isr() {
   #if ENABLED(SLOW_PWM_HEATERS)
     static uint8_t slow_pwm_count = 0;
     #define ISR_STATICS(n) \
-      static uint8_t soft_pwm_ ## n; \
-      static uint8_t state_heater_ ## n = 0; \
-      static uint8_t state_timer_heater_ ## n = 0
+      static uint8_t soft_pwm_count_ ## n, \
+                     state_heater_ ## n = 0, \
+                     state_timer_heater_ ## n = 0
   #else
-    #define ISR_STATICS(n) static uint8_t soft_pwm_ ## n = 0
+    #define ISR_STATICS(n) static uint8_t soft_pwm_count_ ## n = 0
   #endif
 
   // Statics per heater
@@ -1598,73 +1651,73 @@ void Temperature::isr() {
      */
     if (pwm_count_tmp >= 127) {
       pwm_count_tmp -= 127;
-      soft_pwm_0 = (soft_pwm_0 & pwm_mask) + soft_pwm[0];
-      WRITE_HEATER_0(soft_pwm_0 > pwm_mask ? HIGH : LOW);
+      soft_pwm_count_0 = (soft_pwm_count_0 & pwm_mask) + soft_pwm_amount[0];
+      WRITE_HEATER_0(soft_pwm_count_0 > pwm_mask ? HIGH : LOW);
       #if HOTENDS > 1
-        soft_pwm_1 = (soft_pwm_1 & pwm_mask) + soft_pwm[1];
-        WRITE_HEATER_1(soft_pwm_1 > pwm_mask ? HIGH : LOW);
+        soft_pwm_count_1 = (soft_pwm_count_1 & pwm_mask) + soft_pwm_amount[1];
+        WRITE_HEATER_1(soft_pwm_count_1 > pwm_mask ? HIGH : LOW);
         #if HOTENDS > 2
-          soft_pwm_2 = (soft_pwm_2 & pwm_mask) + soft_pwm[2];
-          WRITE_HEATER_2(soft_pwm_2 > pwm_mask ? HIGH : LOW);
+          soft_pwm_count_2 = (soft_pwm_count_2 & pwm_mask) + soft_pwm_amount[2];
+          WRITE_HEATER_2(soft_pwm_count_2 > pwm_mask ? HIGH : LOW);
           #if HOTENDS > 3
-            soft_pwm_3 = (soft_pwm_3 & pwm_mask) + soft_pwm[3];
-            WRITE_HEATER_3(soft_pwm_3 > pwm_mask ? HIGH : LOW);
+            soft_pwm_count_3 = (soft_pwm_count_3 & pwm_mask) + soft_pwm_amount[3];
+            WRITE_HEATER_3(soft_pwm_count_3 > pwm_mask ? HIGH : LOW);
             #if HOTENDS > 4
-              soft_pwm_4 = (soft_pwm_4 & pwm_mask) + soft_pwm[4];
-              WRITE_HEATER_4(soft_pwm_4 > pwm_mask ? HIGH : LOW);
+              soft_pwm_count_4 = (soft_pwm_count_4 & pwm_mask) + soft_pwm_amount[4];
+              WRITE_HEATER_4(soft_pwm_count_4 > pwm_mask ? HIGH : LOW);
             #endif // HOTENDS > 4
           #endif // HOTENDS > 3
         #endif // HOTENDS > 2
       #endif // HOTENDS > 1
 
       #if HAS_HEATER_BED
-        soft_pwm_BED = (soft_pwm_BED & pwm_mask) + soft_pwm_bed;
-        WRITE_HEATER_BED(soft_pwm_BED > pwm_mask ? HIGH : LOW);
+        soft_pwm_count_BED = (soft_pwm_count_BED & pwm_mask) + soft_pwm_amount_bed;
+        WRITE_HEATER_BED(soft_pwm_count_BED > pwm_mask ? HIGH : LOW);
       #endif
 
       #if ENABLED(FAN_SOFT_PWM)
         #if HAS_FAN0
-          soft_pwm_fan[0] = (soft_pwm_fan[0] & pwm_mask) + fanSpeedSoftPwm[0] >> 1;
-          WRITE_FAN(soft_pwm_fan[0] > pwm_mask ? HIGH : LOW);
+          soft_pwm_count_fan[0] = (soft_pwm_count_fan[0] & pwm_mask) + soft_pwm_amount_fan[0] >> 1;
+          WRITE_FAN(soft_pwm_count_fan[0] > pwm_mask ? HIGH : LOW);
         #endif
         #if HAS_FAN1
-          soft_pwm_fan[1] = (soft_pwm_fan[1] & pwm_mask) + fanSpeedSoftPwm[1] >> 1;
-          WRITE_FAN1(soft_pwm_fan[1] > pwm_mask ? HIGH : LOW);
+          soft_pwm_count_fan[1] = (soft_pwm_count_fan[1] & pwm_mask) + soft_pwm_amount_fan[1] >> 1;
+          WRITE_FAN1(soft_pwm_count_fan[1] > pwm_mask ? HIGH : LOW);
         #endif
         #if HAS_FAN2
-          soft_pwm_fan[2] = (soft_pwm_fan[2] & pwm_mask) + fanSpeedSoftPwm[2] >> 1;
-          WRITE_FAN2(soft_pwm_fan[2] > pwm_mask ? HIGH : LOW);
+          soft_pwm_count_fan[2] = (soft_pwm_count_fan[2] & pwm_mask) + soft_pwm_amount_fan[2] >> 1;
+          WRITE_FAN2(soft_pwm_count_fan[2] > pwm_mask ? HIGH : LOW);
         #endif
       #endif
     }
     else {
-      if (soft_pwm_0 <= pwm_count_tmp) WRITE_HEATER_0(0);
+      if (soft_pwm_count_0 <= pwm_count_tmp) WRITE_HEATER_0(0);
       #if HOTENDS > 1
-        if (soft_pwm_1 <= pwm_count_tmp) WRITE_HEATER_1(0);
+        if (soft_pwm_count_1 <= pwm_count_tmp) WRITE_HEATER_1(0);
         #if HOTENDS > 2
-          if (soft_pwm_2 <= pwm_count_tmp) WRITE_HEATER_2(0);
+          if (soft_pwm_count_2 <= pwm_count_tmp) WRITE_HEATER_2(0);
           #if HOTENDS > 3
-            if (soft_pwm_3 <= pwm_count_tmp) WRITE_HEATER_3(0);
+            if (soft_pwm_count_3 <= pwm_count_tmp) WRITE_HEATER_3(0);
             #if HOTENDS > 4
-              if (soft_pwm_4 <= pwm_count_tmp) WRITE_HEATER_4(0);
+              if (soft_pwm_count_4 <= pwm_count_tmp) WRITE_HEATER_4(0);
             #endif // HOTENDS > 4
           #endif // HOTENDS > 3
         #endif // HOTENDS > 2
       #endif // HOTENDS > 1
 
       #if HAS_HEATER_BED
-        if (soft_pwm_BED <= pwm_count_tmp) WRITE_HEATER_BED(0);
+        if (soft_pwm_count_BED <= pwm_count_tmp) WRITE_HEATER_BED(0);
       #endif
 
       #if ENABLED(FAN_SOFT_PWM)
         #if HAS_FAN0
-          if (soft_pwm_fan[0] <= pwm_count_tmp) WRITE_FAN(0);
+          if (soft_pwm_count_fan[0] <= pwm_count_tmp) WRITE_FAN(0);
         #endif
         #if HAS_FAN1
-          if (soft_pwm_fan[1] <= pwm_count_tmp) WRITE_FAN1(0);
+          if (soft_pwm_count_fan[1] <= pwm_count_tmp) WRITE_FAN1(0);
         #endif
         #if HAS_FAN2
-          if (soft_pwm_fan[2] <= pwm_count_tmp) WRITE_FAN2(0);
+          if (soft_pwm_count_fan[2] <= pwm_count_tmp) WRITE_FAN2(0);
         #endif
       #endif
     }
@@ -1707,7 +1760,7 @@ void Temperature::isr() {
           WRITE_HEATER_ ##NR(0); \
         } \
       }
-    #define SLOW_PWM_ROUTINE(n) _SLOW_PWM_ROUTINE(n, soft_pwm[n])
+    #define SLOW_PWM_ROUTINE(n) _SLOW_PWM_ROUTINE(n, soft_pwm_amount[n])
 
     #define PWM_OFF_ROUTINE(NR) \
       if (soft_pwm_ ##NR < slow_pwm_count) { \
@@ -1734,7 +1787,7 @@ void Temperature::isr() {
         #endif // HOTENDS > 2
       #endif // HOTENDS > 1
       #if HAS_HEATER_BED
-        _SLOW_PWM_ROUTINE(BED, soft_pwm_bed); // BED
+        _SLOW_PWM_ROUTINE(BED, soft_pwm_amount_bed); // BED
       #endif
 
     } // slow_pwm_count == 0
@@ -1760,26 +1813,26 @@ void Temperature::isr() {
       if (pwm_count_tmp >= 127) {
         pwm_count_tmp = 0;
         #if HAS_FAN0
-          soft_pwm_fan[0] = fanSpeedSoftPwm[0] >> 1;
-          WRITE_FAN(soft_pwm_fan[0] > 0 ? HIGH : LOW);
+          soft_pwm_count_fan[0] = soft_pwm_amount_fan[0] >> 1;
+          WRITE_FAN(soft_pwm_count_fan[0] > 0 ? HIGH : LOW);
         #endif
         #if HAS_FAN1
-          soft_pwm_fan[1] = fanSpeedSoftPwm[1] >> 1;
-          WRITE_FAN1(soft_pwm_fan[1] > 0 ? HIGH : LOW);
+          soft_pwm_count_fan[1] = soft_pwm_amount_fan[1] >> 1;
+          WRITE_FAN1(soft_pwm_count_fan[1] > 0 ? HIGH : LOW);
         #endif
         #if HAS_FAN2
-          soft_pwm_fan[2] = fanSpeedSoftPwm[2] >> 1;
-          WRITE_FAN2(soft_pwm_fan[2] > 0 ? HIGH : LOW);
+          soft_pwm_count_fan[2] = soft_pwm_amount_fan[2] >> 1;
+          WRITE_FAN2(soft_pwm_count_fan[2] > 0 ? HIGH : LOW);
         #endif
       }
       #if HAS_FAN0
-        if (soft_pwm_fan[0] <= pwm_count_tmp) WRITE_FAN(0);
+        if (soft_pwm_count_fan[0] <= pwm_count_tmp) WRITE_FAN(0);
       #endif
       #if HAS_FAN1
-        if (soft_pwm_fan[1] <= pwm_count_tmp) WRITE_FAN1(0);
+        if (soft_pwm_count_fan[1] <= pwm_count_tmp) WRITE_FAN1(0);
       #endif
       #if HAS_FAN2
-        if (soft_pwm_fan[2] <= pwm_count_tmp) WRITE_FAN2(0);
+        if (soft_pwm_count_fan[2] <= pwm_count_tmp) WRITE_FAN2(0);
       #endif
     #endif // FAN_SOFT_PWM
 
@@ -1967,9 +2020,9 @@ void Temperature::isr() {
     };
 
     for (uint8_t e = 0; e < COUNT(temp_dir); e++) {
-      const int tdir = temp_dir[e], rawtemp = current_temperature_raw[e] * tdir;
-      if (rawtemp > maxttemp_raw[e] * tdir && target_temperature[e] > 0.0f) max_temp_error(e);
-      if (rawtemp < minttemp_raw[e] * tdir && !is_preheating(e) && target_temperature[e] > 0.0f) {
+      const int16_t tdir = temp_dir[e], rawtemp = current_temperature_raw[e] * tdir;
+      if (rawtemp > maxttemp_raw[e] * tdir && target_temperature[e] > 0) max_temp_error(e);
+      if (rawtemp < minttemp_raw[e] * tdir && !is_preheating(e) && target_temperature[e] > 0) {
         #ifdef MAX_CONSECUTIVE_LOW_TEMPERATURE_ERROR_ALLOWED
           if (++consecutive_low_temperature_error[e] >= MAX_CONSECUTIVE_LOW_TEMPERATURE_ERROR_ALLOWED)
         #endif
@@ -1987,8 +2040,8 @@ void Temperature::isr() {
       #else
         #define GEBED >=
       #endif
-      if (current_temperature_bed_raw GEBED bed_maxttemp_raw && target_temperature_bed > 0.0f) max_temp_error(-1);
-      if (bed_minttemp_raw GEBED current_temperature_bed_raw && target_temperature_bed > 0.0f) min_temp_error(-1);
+      if (current_temperature_bed_raw GEBED bed_maxttemp_raw && target_temperature_bed > 0) max_temp_error(-1);
+      if (bed_minttemp_raw GEBED current_temperature_bed_raw && target_temperature_bed > 0) min_temp_error(-1);
     #endif
 
   } // temp_count >= OVERSAMPLENR

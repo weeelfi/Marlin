@@ -36,13 +36,13 @@
  *
  */
 
-#define EEPROM_VERSION "V35"
+#define EEPROM_VERSION "V37"
 
 // Change EEPROM version if these are changed:
 #define EEPROM_OFFSET 100
 
 /**
- * V33 EEPROM Layout:
+ * V37 EEPROM Layout:
  *
  *  100  Version                                    (char x4)
  *  104  EEPROM Checksum                            (uint16_t)
@@ -72,7 +72,7 @@
  *  224            mbl.z_offset                     (float)
  *  228            GRID_MAX_POINTS_X                (uint8_t)
  *  229            GRID_MAX_POINTS_Y                (uint8_t)
- *  230 G29 S3 XYZ z_values[][]                     (float x9, up to float x 81) +288
+ *  230 G29 S3 XYZ z_values[][]                     (float x9, up to float x81) +288
  *
  * HAS_BED_PROBE:                                   4 bytes
  *  266  M851      zprobe_zoffset                   (float)
@@ -85,19 +85,22 @@
  *  307            GRID_MAX_POINTS_Y                (uint8_t)
  *  308            bilinear_grid_spacing            (int x2)
  *  312  G29 L F   bilinear_start                   (int x2)
- *  316            bed_level_grid[][]               (float x9, up to float x256) +988
+ *  316            z_values[][]                     (float x9, up to float x256) +988
+ *
+ * AUTO_BED_LEVELING_UBL:                           6 bytes
+ *  324  G29 A     ubl.state.active                 (bool)
+ *  325  G29 Z     ubl.state.z_offset               (float)
+ *  329  G29 S     ubl.state.eeprom_storage_slot    (int8_t)
  *
  * DELTA:                                           48 bytes
  *  348  M666 XYZ  endstop_adj                      (float x3)
  *  360  M665 R    delta_radius                     (float)
  *  364  M665 L    delta_diagonal_rod               (float)
  *  368  M665 S    delta_segments_per_second        (float)
- *  372  M665 A    delta_diagonal_rod_trim[A]       (float)
- *  376  M665 B    delta_diagonal_rod_trim[B]       (float)
- *  380  M665 C    delta_diagonal_rod_trim[C]       (float)
- *  384  M665 I    delta_tower_angle_trim[A]        (float)
- *  388  M665 J    delta_tower_angle_trim[B]        (float)
- *  392  M665 K    delta_tower_angle_trim[C]        (float)
+ *  372  M665 B    delta_calibration_radius         (float)
+ *  376  M665 X    delta_tower_angle_trim[A]        (float)
+ *  380  M665 Y    delta_tower_angle_trim[B]        (float)
+ *  ---  M665 Z    delta_tower_angle_trim[C]        (float) is always 0.0
  *
  * Z_DUAL_ENDSTOPS:                                 48 bytes
  *  348  M666 Z    z_endstop_adj                    (float)
@@ -179,8 +182,8 @@ MarlinSettings settings;
   #include "ubl.h"
 #endif
 
-#if ENABLED(ABL_BILINEAR_SUBDIVISION)
-  extern void bed_level_virt_interpolate();
+#if ENABLED(AUTO_BED_LEVELING_BILINEAR)
+  extern void refresh_bed_level();
 #endif
 
 /**
@@ -212,17 +215,16 @@ void MarlinSettings::postprocess() {
   #endif
 
   #if ENABLED(ENABLE_LEVELING_FADE_HEIGHT)
-    set_z_fade_height(
-      //#if ENABLED(AUTO_BED_LEVELING_UBL)
-      //  ubl.state.g29_correction_fade_height
-      //#else
-        planner.z_fade_height
-      //#endif
-    );
+    set_z_fade_height(planner.z_fade_height);
   #endif
 
   #if HAS_BED_PROBE
     refresh_zprobe_zoffset();
+  #endif
+
+  #if ENABLED(AUTO_BED_LEVELING_BILINEAR)
+    refresh_bed_level();
+    //set_bed_leveling_enabled(leveling_is_on);
   #endif
 }
 
@@ -323,15 +325,15 @@ void MarlinSettings::postprocess() {
     #endif
 
     //
-    // General Leveling
+    // Global Leveling
     //
 
     #if ENABLED(ENABLE_LEVELING_FADE_HEIGHT)
-      EEPROM_WRITE(planner.z_fade_height);
+      const float zfh = planner.z_fade_height;
     #else
-      dummy = 10.0;
-      EEPROM_WRITE(dummy);
+      const float zfh = 10.0;
     #endif
+    EEPROM_WRITE(zfh);
 
     //
     // Mesh Bed Leveling
@@ -339,7 +341,10 @@ void MarlinSettings::postprocess() {
 
     #if ENABLED(MESH_BED_LEVELING)
       // Compile time test that sizeof(mbl.z_values) is as expected
-      typedef char c_assert[(sizeof(mbl.z_values) == (GRID_MAX_POINTS_X) * (GRID_MAX_POINTS_Y) * sizeof(dummy)) ? 1 : -1];
+      static_assert(
+        sizeof(mbl.z_values) == (GRID_MAX_POINTS_X) * (GRID_MAX_POINTS_Y) * sizeof(mbl.z_values[0][0]),
+        "MBL Z array is the wrong size."
+      );
       const bool leveling_is_on = TEST(mbl.status, MBL_STATUS_HAS_MESH_BIT);
       const uint8_t mesh_num_x = GRID_MAX_POINTS_X, mesh_num_y = GRID_MAX_POINTS_Y;
       EEPROM_WRITE(leveling_is_on);
@@ -347,8 +352,7 @@ void MarlinSettings::postprocess() {
       EEPROM_WRITE(mesh_num_x);
       EEPROM_WRITE(mesh_num_y);
       EEPROM_WRITE(mbl.z_values);
-    #else
-      // For disabled MBL write a default mesh
+    #else // For disabled MBL write a default mesh
       const bool leveling_is_on = false;
       dummy = 0.0f;
       const uint8_t mesh_num_x = 3, mesh_num_y = 3;
@@ -380,14 +384,17 @@ void MarlinSettings::postprocess() {
     //
 
     #if ENABLED(AUTO_BED_LEVELING_BILINEAR)
-      // Compile time test that sizeof(bed_level_grid) is as expected
-      typedef char c_assert[(sizeof(bed_level_grid) == (GRID_MAX_POINTS_X) * (GRID_MAX_POINTS_Y) * sizeof(dummy)) ? 1 : -1];
+      // Compile time test that sizeof(z_values) is as expected
+      static_assert(
+        sizeof(z_values) == (GRID_MAX_POINTS_X) * (GRID_MAX_POINTS_Y) * sizeof(z_values[0][0]),
+        "Bilinear Z array is the wrong size."
+      );
       const uint8_t grid_max_x = GRID_MAX_POINTS_X, grid_max_y = GRID_MAX_POINTS_Y;
       EEPROM_WRITE(grid_max_x);            // 1 byte
       EEPROM_WRITE(grid_max_y);            // 1 byte
       EEPROM_WRITE(bilinear_grid_spacing); // 2 ints
       EEPROM_WRITE(bilinear_start);        // 2 ints
-      EEPROM_WRITE(bed_level_grid);        // 9-256 floats
+      EEPROM_WRITE(z_values);              // 9-256 floats
     #else
       // For disabled Bilinear Grid write an empty 3x3 grid
       const uint8_t grid_max_x = 3, grid_max_y = 3;
@@ -400,14 +407,29 @@ void MarlinSettings::postprocess() {
       for (uint16_t q = grid_max_x * grid_max_y; q--;) EEPROM_WRITE(dummy);
     #endif // AUTO_BED_LEVELING_BILINEAR
 
+    #if ENABLED(AUTO_BED_LEVELING_UBL)
+      EEPROM_WRITE(ubl.state.active);
+      EEPROM_WRITE(ubl.state.z_offset);
+      EEPROM_WRITE(ubl.state.eeprom_storage_slot);
+    #else
+      const bool ubl_active = 0;
+      dummy = 0.0f;
+      const int8_t eeprom_slot = -1;
+      EEPROM_WRITE(ubl_active);
+      EEPROM_WRITE(dummy);
+      EEPROM_WRITE(eeprom_slot);
+    #endif //AUTO_BED_LEVELING_UBL
+
     // 9 floats for DELTA / Z_DUAL_ENDSTOPS
     #if ENABLED(DELTA)
       EEPROM_WRITE(endstop_adj);               // 3 floats
       EEPROM_WRITE(delta_radius);              // 1 float
       EEPROM_WRITE(delta_diagonal_rod);        // 1 float
       EEPROM_WRITE(delta_segments_per_second); // 1 float
-      EEPROM_WRITE(delta_diagonal_rod_trim);   // 3 floats
-      EEPROM_WRITE(delta_tower_angle_trim);    // 3 floats
+      EEPROM_WRITE(delta_calibration_radius);  // 1 float
+      EEPROM_WRITE(delta_tower_angle_trim);    // 2 floats
+      dummy = 0.0f;
+      for (uint8_t q = 3; q--;) EEPROM_WRITE(dummy);
     #elif ENABLED(Z_DUAL_ENDSTOPS)
       EEPROM_WRITE(z_endstop_adj);             // 1 float
       dummy = 0.0f;
@@ -578,15 +600,14 @@ void MarlinSettings::postprocess() {
     // Linear Advance
     //
 
-    float extruder_advance_k = 0.0f, advance_ed_ratio = 0.0f;
-
     #if ENABLED(LIN_ADVANCE)
-      extruder_advance_k = planner.get_extruder_advance_k();
-      advance_ed_ratio = planner.get_advance_ed_ratio();
+      EEPROM_WRITE(planner.extruder_advance_k);
+      EEPROM_WRITE(planner.advance_ed_ratio);
+    #else
+      dummy = 0.0f;
+      EEPROM_WRITE(dummy);
+      EEPROM_WRITE(dummy);
     #endif
-
-    EEPROM_WRITE(extruder_advance_k);
-    EEPROM_WRITE(advance_ed_ratio);
 
     if (!eeprom_write_error) {
 
@@ -604,8 +625,7 @@ void MarlinSettings::postprocess() {
       SERIAL_ECHOLNPGM(" bytes)");
     }
 
-    #if ENABLED(AUTO_BED_LEVELING_UBL)
-      ubl.store_state();
+    #if ENABLED(UBL_SAVE_ACTIVE_ON_M500)
       if (ubl.state.eeprom_storage_slot >= 0)
         ubl.store_mesh(ubl.state.eeprom_storage_slot);
     #endif
@@ -689,7 +709,7 @@ void MarlinSettings::postprocess() {
       #endif
 
       //
-      // General Leveling
+      // Global Leveling
       //
 
       #if ENABLED(ENABLE_LEVELING_FADE_HEIGHT)
@@ -753,11 +773,7 @@ void MarlinSettings::postprocess() {
           set_bed_leveling_enabled(false);
           EEPROM_READ(bilinear_grid_spacing);        // 2 ints
           EEPROM_READ(bilinear_start);               // 2 ints
-          EEPROM_READ(bed_level_grid);               // 9 to 256 floats
-          #if ENABLED(ABL_BILINEAR_SUBDIVISION)
-            bed_level_virt_interpolate();
-          #endif
-          //set_bed_leveling_enabled(leveling_is_on);
+          EEPROM_READ(z_values);                     // 9 to 256 floats
         }
         else // EEPROM data is stale
       #endif // AUTO_BED_LEVELING_BILINEAR
@@ -769,13 +785,27 @@ void MarlinSettings::postprocess() {
           for (uint16_t q = grid_max_x * grid_max_y; q--;) EEPROM_READ(dummy);
         }
 
+      #if ENABLED(AUTO_BED_LEVELING_UBL)
+        EEPROM_READ(ubl.state.active);
+        EEPROM_READ(ubl.state.z_offset);
+        EEPROM_READ(ubl.state.eeprom_storage_slot);
+      #else
+        bool dummyb;
+        uint8_t dummyui8;
+        EEPROM_READ(dummyb);
+        EEPROM_READ(dummy);
+        EEPROM_READ(dummyui8);
+      #endif //AUTO_BED_LEVELING_UBL
+
       #if ENABLED(DELTA)
         EEPROM_READ(endstop_adj);               // 3 floats
         EEPROM_READ(delta_radius);              // 1 float
         EEPROM_READ(delta_diagonal_rod);        // 1 float
         EEPROM_READ(delta_segments_per_second); // 1 float
-        EEPROM_READ(delta_diagonal_rod_trim);   // 3 floats
-        EEPROM_READ(delta_tower_angle_trim);    // 3 floats
+        EEPROM_READ(delta_calibration_radius);  // 1 float
+        EEPROM_READ(delta_tower_angle_trim);    // 2 floats
+        dummy = 0.0f;
+        for (uint8_t q=3; q--;) EEPROM_READ(dummy);
       #elif ENABLED(Z_DUAL_ENDSTOPS)
         EEPROM_READ(z_endstop_adj);
         dummy = 0.0f;
@@ -922,13 +952,12 @@ void MarlinSettings::postprocess() {
       // Linear Advance
       //
 
-      float extruder_advance_k, advance_ed_ratio;
-      EEPROM_READ(extruder_advance_k);
-      EEPROM_READ(advance_ed_ratio);
-
       #if ENABLED(LIN_ADVANCE)
-        planner.set_extruder_advance_k(extruder_advance_k);
-        planner.set_advance_ed_ratio(advance_ed_ratio);
+        EEPROM_READ(planner.extruder_advance_k);
+        EEPROM_READ(planner.advance_ed_ratio);
+      #else
+        EEPROM_READ(dummy);
+        EEPROM_READ(dummy);
       #endif
 
       if (eeprom_checksum == stored_checksum) {
@@ -952,27 +981,16 @@ void MarlinSettings::postprocess() {
         ubl.eeprom_start = (eeprom_index + 32) & 0xFFF8; // Pad the end of configuration data so it
                                                          // can float up or down a little bit without
                                                          // disrupting the Unified Bed Leveling data
-        ubl.load_state();
-
         SERIAL_ECHOPGM(" UBL ");
         if (!ubl.state.active) SERIAL_ECHO("not ");
         SERIAL_ECHOLNPGM("active!");
 
         if (!ubl.sanity_check()) {
-          int tmp_mesh;                                // We want to preserve whether the UBL System is Active
-          bool tmp_active;                             // If it is, we want to preserve the Mesh that is being used.
-          tmp_mesh = ubl.state.eeprom_storage_slot;
-          tmp_active = ubl.state.active;
-          SERIAL_ECHOLNPGM("\nInitializing Bed Leveling State to current firmware settings.\n");
-          ubl.state = ubl.pre_initialized;             // Initialize with the pre_initialized data structure
-          ubl.state.eeprom_storage_slot = tmp_mesh;    // But then restore some data we don't want mangled
-          ubl.state.active = tmp_active;
+          SERIAL_ECHOLNPGM("\nUnified Bed Leveling system initialized.\n");
         }
         else {
-          SERIAL_PROTOCOLPGM("?Unable to enable Unified Bed Leveling.\n");
-          ubl.state = ubl.pre_initialized;
+          SERIAL_PROTOCOLPGM("?Unable to enable Unified Bed Leveling system.\n");
           ubl.reset();
-          ubl.store_state();
         }
 
         if (ubl.state.eeprom_storage_slot >= 0) {
@@ -986,6 +1004,7 @@ void MarlinSettings::postprocess() {
         }
       #endif
     }
+
     #if ENABLED(EEPROM_CHITCHAT)
       report();
     #endif
@@ -1052,7 +1071,7 @@ void MarlinSettings::reset() {
   #endif
 
   // Applies to all MBL and ABL
-  #if PLANNER_LEVELING
+  #if HAS_LEVELING
     reset_bed_level();
   #endif
 
@@ -1062,14 +1081,14 @@ void MarlinSettings::reset() {
 
   #if ENABLED(DELTA)
     const float adj[ABC] = DELTA_ENDSTOP_ADJ,
-                drt[ABC] = { DELTA_DIAGONAL_ROD_TRIM_TOWER_1, DELTA_DIAGONAL_ROD_TRIM_TOWER_2, DELTA_DIAGONAL_ROD_TRIM_TOWER_3 },
-                dta[ABC] = { DELTA_TOWER_ANGLE_TRIM_1, DELTA_TOWER_ANGLE_TRIM_2, DELTA_TOWER_ANGLE_TRIM_3 };
+                dta[ABC] = DELTA_TOWER_ANGLE_TRIM;
     COPY(endstop_adj, adj);
     delta_radius = DELTA_RADIUS;
     delta_diagonal_rod = DELTA_DIAGONAL_ROD;
     delta_segments_per_second = DELTA_SEGMENTS_PER_SECOND;
-    COPY(delta_diagonal_rod_trim, drt);
-    COPY(delta_tower_angle_trim, dta);
+    delta_calibration_radius = DELTA_CALIBRATION_RADIUS;
+    delta_tower_angle_trim[A_AXIS] = dta[A_AXIS] - dta[C_AXIS];
+    delta_tower_angle_trim[B_AXIS] = dta[B_AXIS] - dta[C_AXIS];
     home_offset[Z_AXIS] = 0;
 
   #elif ENABLED(Z_DUAL_ENDSTOPS)
@@ -1187,8 +1206,12 @@ void MarlinSettings::reset() {
   #endif
 
   #if ENABLED(LIN_ADVANCE)
-    planner.set_extruder_advance_k(LIN_ADVANCE_K);
-    planner.set_advance_ed_ratio(LIN_ADVANCE_E_D_RATIO);
+    planner.extruder_advance_k = LIN_ADVANCE_K;
+    planner.advance_ed_ratio = LIN_ADVANCE_E_D_RATIO;
+  #endif
+
+  #if ENABLED(AUTO_BED_LEVELING_UBL)
+    ubl.reset();
   #endif
 
   postprocess();
@@ -1200,13 +1223,6 @@ void MarlinSettings::reset() {
 #if DISABLED(DISABLE_M503)
 
   #define CONFIG_ECHO_START do{ if (!forReplay) SERIAL_ECHO_START; }while(0)
-
-  #if ENABLED(INCH_MODE_SUPPORT)
-    extern float linear_unit_factor;
-    #define LINEAR_UNIT(N) ((N) / linear_unit_factor)
-  #else
-    #define LINEAR_UNIT(N) N
-  #endif
 
   /**
    * M503 - Report current settings in RAM
@@ -1223,13 +1239,37 @@ void MarlinSettings::reset() {
       extern float linear_unit_factor, volumetric_unit_factor;
       #define LINEAR_UNIT(N) ((N) / linear_unit_factor)
       #define VOLUMETRIC_UNIT(N) ((N) / (volumetric_enabled ? volumetric_unit_factor : linear_unit_factor))
-      serialprintPGM(linear_unit_factor == 1.0 ? PSTR("  G21 ; Units in mm\n") : PSTR("  G20 ; Units in inches\n"));
+      SERIAL_ECHOPGM("  G2");
+      SERIAL_CHAR(linear_unit_factor == 1.0 ? '1' : '0');
+      SERIAL_ECHOPGM(" ; Units in ");
+      serialprintPGM(linear_unit_factor == 1.0 ? PSTR("mm\n") : PSTR("inches\n"));
     #else
       #define LINEAR_UNIT(N) N
       #define VOLUMETRIC_UNIT(N) N
       SERIAL_ECHOLNPGM("  G21 ; Units in mm\n");
     #endif
     SERIAL_EOL;
+
+    #if ENABLED(ULTIPANEL)
+
+      // Temperature units - for Ultipanel temperature options
+
+      CONFIG_ECHO_START;
+      #if ENABLED(TEMPERATURE_UNITS_SUPPORT)
+        extern TempUnit input_temp_units;
+        extern float to_temp_units(const float &f);
+        #define TEMP_UNIT(N) to_temp_units(N)
+        SERIAL_ECHOPGM("  M149 ");
+        SERIAL_CHAR(input_temp_units == TEMPUNIT_K ? 'K' : input_temp_units == TEMPUNIT_F ? 'F' : 'C');
+        SERIAL_ECHOPGM(" ; Units in ");
+        serialprintPGM(input_temp_units == TEMPUNIT_K ? PSTR("Kelvin\n") : input_temp_units == TEMPUNIT_F ? PSTR("Fahrenheit\n") : PSTR("Celsius\n"));
+      #else
+        #define TEMP_UNIT(N) N
+        SERIAL_ECHOLNPGM("  M149 C ; Units in Celsius\n");
+      #endif
+      SERIAL_EOL;
+
+    #endif
 
     /**
      * Volumetric extrusion M200
@@ -1413,9 +1453,9 @@ void MarlinSettings::reset() {
       }
       CONFIG_ECHO_START;
       SERIAL_ECHOPAIR("  M420 S", ubl.state.active ? 1 : 0);
-      //#if ENABLED(ENABLE_LEVELING_FADE_HEIGHT)
-      //  SERIAL_ECHOPAIR(" Z", ubl.state.g29_correction_fade_height);
-      //#endif
+      #if ENABLED(ENABLE_LEVELING_FADE_HEIGHT)
+        SERIAL_ECHOPAIR(" Z", planner.z_fade_height);
+      #endif
       SERIAL_EOL;
 
       if (!forReplay) {
@@ -1474,19 +1514,18 @@ void MarlinSettings::reset() {
       SERIAL_ECHOLNPAIR(" Z", LINEAR_UNIT(endstop_adj[Z_AXIS]));
       if (!forReplay) {
         CONFIG_ECHO_START;
-        SERIAL_ECHOLNPGM("Delta settings: L<diagonal_rod> R<radius> H<height> S<segments_per_s> ABC<diagonal_rod_[123]_trim>");
+        SERIAL_ECHOLNPGM("Delta settings: L<diagonal_rod> R<radius> H<height> S<segments_per_s> B<calibration radius> XYZ<tower angle corrections>");
       }
       CONFIG_ECHO_START;
       SERIAL_ECHOPAIR("  M665 L", LINEAR_UNIT(delta_diagonal_rod));
       SERIAL_ECHOPAIR(" R", LINEAR_UNIT(delta_radius));
       SERIAL_ECHOPAIR(" H", LINEAR_UNIT(DELTA_HEIGHT + home_offset[Z_AXIS]));
       SERIAL_ECHOPAIR(" S", delta_segments_per_second);
-      SERIAL_ECHOPAIR(" A", LINEAR_UNIT(delta_diagonal_rod_trim[A_AXIS]));
-      SERIAL_ECHOPAIR(" B", LINEAR_UNIT(delta_diagonal_rod_trim[B_AXIS]));
-      SERIAL_ECHOPAIR(" C", LINEAR_UNIT(delta_diagonal_rod_trim[C_AXIS]));
-      SERIAL_ECHOPAIR(" I", LINEAR_UNIT(delta_tower_angle_trim[A_AXIS]));
-      SERIAL_ECHOPAIR(" J", LINEAR_UNIT(delta_tower_angle_trim[B_AXIS]));
-      SERIAL_ECHOLNPAIR(" K", LINEAR_UNIT(delta_tower_angle_trim[C_AXIS]));
+      SERIAL_ECHOPAIR(" B", LINEAR_UNIT(delta_calibration_radius));
+      SERIAL_ECHOPAIR(" X", LINEAR_UNIT(delta_tower_angle_trim[A_AXIS]));
+      SERIAL_ECHOPAIR(" Y", LINEAR_UNIT(delta_tower_angle_trim[B_AXIS]));
+      SERIAL_ECHOPAIR(" Z", 0.00);
+      SERIAL_EOL;
     #elif ENABLED(Z_DUAL_ENDSTOPS)
       if (!forReplay) {
         CONFIG_ECHO_START;
@@ -1504,8 +1543,8 @@ void MarlinSettings::reset() {
       CONFIG_ECHO_START;
       for (uint8_t i = 0; i < COUNT(lcd_preheat_hotend_temp); i++) {
         SERIAL_ECHOPAIR("  M145 S", (int)i);
-        SERIAL_ECHOPAIR(" H", lcd_preheat_hotend_temp[i]);
-        SERIAL_ECHOPAIR(" B", lcd_preheat_bed_temp[i]);
+        SERIAL_ECHOPAIR(" H", TEMP_UNIT(lcd_preheat_hotend_temp[i]));
+        SERIAL_ECHOPAIR(" B", TEMP_UNIT(lcd_preheat_bed_temp[i]));
         SERIAL_ECHOLNPAIR(" F", lcd_preheat_fan_speed[i]);
       }
     #endif // ULTIPANEL
@@ -1665,8 +1704,8 @@ void MarlinSettings::reset() {
         SERIAL_ECHOLNPGM("Linear Advance:");
       }
       CONFIG_ECHO_START;
-      SERIAL_ECHOPAIR("  M900 K", planner.get_extruder_advance_k());
-      SERIAL_ECHOLNPAIR(" R", planner.get_advance_ed_ratio());
+      SERIAL_ECHOPAIR("  M900 K", planner.extruder_advance_k);
+      SERIAL_ECHOLNPAIR(" R", planner.advance_ed_ratio);
     #endif
   }
 

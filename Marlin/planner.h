@@ -168,6 +168,10 @@ class Planner {
       static float z_fade_height, inverse_z_fade_height;
     #endif
 
+    #if ENABLED(LIN_ADVANCE)
+      static float extruder_advance_k, advance_ed_ratio;
+    #endif
+
   private:
 
     /**
@@ -209,8 +213,6 @@ class Planner {
 
     #if ENABLED(LIN_ADVANCE)
       static float position_float[NUM_AXIS];
-      static float extruder_advance_k;
-      static float advance_ed_ratio;
     #endif
 
     #if ENABLED(ULTRA_LCD)
@@ -244,7 +246,7 @@ class Planner {
 
     static bool is_full() { return (block_buffer_tail == BLOCK_MOD(block_buffer_head + 1)); }
 
-    #if PLANNER_LEVELING && DISABLED(AUTO_BED_LEVELING_UBL)
+    #if PLANNER_LEVELING
 
       #define ARG_X float lx
       #define ARG_Y float ly
@@ -264,13 +266,6 @@ class Planner {
       #define ARG_Y const float &ly
       #define ARG_Z const float &lz
 
-    #endif
-
-    #if ENABLED(LIN_ADVANCE)
-      static void set_extruder_advance_k(float k) { extruder_advance_k = k; };
-      static float get_extruder_advance_k() { return extruder_advance_k; };
-      static void set_advance_ed_ratio(float ratio) { advance_ed_ratio = ratio; };
-      static float get_advance_ed_ratio() { return advance_ed_ratio; };
     #endif
 
     /**
@@ -301,7 +296,7 @@ class Planner {
      *  extruder     - target extruder
      */
     static FORCE_INLINE void buffer_line(ARG_X, ARG_Y, ARG_Z, const float &e, const float &fr_mm_s, const uint8_t extruder) {
-      #if PLANNER_LEVELING && DISABLED(AUTO_BED_LEVELING_UBL) && IS_CARTESIAN
+      #if PLANNER_LEVELING && IS_CARTESIAN
         apply_leveling(lx, ly, lz);
       #endif
       _buffer_line(lx, ly, lz, e, fr_mm_s, extruder);
@@ -317,7 +312,7 @@ class Planner {
      *  extruder - target extruder
      */
     static FORCE_INLINE void buffer_line_kinematic(const float ltarget[XYZE], const float &fr_mm_s, const uint8_t extruder) {
-      #if PLANNER_LEVELING && DISABLED(AUTO_BED_LEVELING_UBL)
+      #if PLANNER_LEVELING
         float lpos[XYZ] = { ltarget[X_AXIS], ltarget[Y_AXIS], ltarget[Z_AXIS] };
         apply_leveling(lpos);
       #else
@@ -341,7 +336,7 @@ class Planner {
      * Clears previous speed values.
      */
     static FORCE_INLINE void set_position_mm(ARG_X, ARG_Y, ARG_Z, const float &e) {
-      #if PLANNER_LEVELING && DISABLED(AUTO_BED_LEVELING_UBL) && IS_CARTESIAN
+      #if PLANNER_LEVELING && IS_CARTESIAN
         apply_leveling(lx, ly, lz);
       #endif
       _set_position_mm(lx, ly, lz, e);
@@ -402,7 +397,7 @@ class Planner {
         // Doesn't matter because block_buffer_runtime_us is already too small an estimation.
         bbru >>= 10;
         // limit to about a minute.
-        NOMORE(bbru, 0xfffful);
+        NOMORE(bbru, 0xFFFFul);
         return bbru;
       }
 
@@ -473,6 +468,8 @@ class Planner {
     static void recalculate();
 
 };
+
+#define PLANNER_XY_FEEDRATE() (min(planner.max_feedrate_mm_s[X_AXIS], planner.max_feedrate_mm_s[Y_AXIS]))
 
 extern Planner planner;
 
