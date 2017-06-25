@@ -114,9 +114,22 @@ volatile uint32_t Stepper::step_events_completed = 0; // The number of step even
          Stepper::advance;
   #endif
 
-  #define ADV_RATE(T, L) (e_steps[TOOL_E_INDEX] ? (T) * (L) / abs(e_steps[TOOL_E_INDEX]) : ADV_NEVER)
+  /**
+   * See https://github.com/MarlinFirmware/Marlin/issues/5699#issuecomment-309264382
+   *
+   * This fix isn't perfect and may lose steps - but better than locking up completely
+   * in future the planner should slow down if advance stepping rate would be too high
+   */
+  FORCE_INLINE uint16_t adv_rate(const int steps, const uint16_t timer, const uint8_t loops) {
+    if (steps) {
+      const uint16_t rate = (timer * loops) / abs(steps);
+      //return constrain(rate, 1, ADV_NEVER - 1)
+      return rate ? rate : 1;
+    }
+    return ADV_NEVER;
+  }
 
-#endif
+#endif // ADVANCE || LIN_ADVANCE
 
 long Stepper::acceleration_time, Stepper::deceleration_time;
 
@@ -374,7 +387,7 @@ void Stepper::isr() {
         ocr_val = (remainder < OCR_VAL_TOLERANCE) ? ENDSTOP_NOMINAL_OCR_VAL + remainder : ENDSTOP_NOMINAL_OCR_VAL; \
         step_remaining = (uint16_t)L - ocr_val; \
       } \
-    } while(0)
+    }while(0)
 
     if (step_remaining && ENDSTOPS_ENABLED) {   // Just check endstops - not yet time for a step
       endstops.update();
@@ -532,33 +545,69 @@ void Stepper::isr() {
         _APPLY_STEP(AXIS)(_INVERT_STEP_PIN(AXIS),0); \
       }
 
+    /**
+     * Estimate the number of cycles that the stepper logic already takes
+     * up between the start and stop of the X stepper pulse.
+     *
+     * Currently this uses very modest estimates of around 5 cycles.
+     * True values may be derived by careful testing.
+     *
+     * Once any delay is added, the cost of the delay code itself
+     * may be subtracted from this value to get a more accurate delay.
+     * Delays under 20 cycles (1.25µs) will be very accurate, using NOPs.
+     * Longer delays use a loop. The resolution is 8 cycles.
+     */
     #if HAS_X_STEP
-      #define _COUNT_STEPPERS_1 1
+      #define _CYCLE_APPROX_1 5
     #else
-      #define _COUNT_STEPPERS_1 0
+      #define _CYCLE_APPROX_1 0
+    #endif
+    #if ENABLED(X_DUAL_STEPPER_DRIVERS)
+      #define _CYCLE_APPROX_2 _CYCLE_APPROX_1 + 4
+    #else
+      #define _CYCLE_APPROX_2 _CYCLE_APPROX_1
     #endif
     #if HAS_Y_STEP
-      #define _COUNT_STEPPERS_2 _COUNT_STEPPERS_1 + 1
+      #define _CYCLE_APPROX_3 _CYCLE_APPROX_2 + 5
     #else
-      #define _COUNT_STEPPERS_2 _COUNT_STEPPERS_1
+      #define _CYCLE_APPROX_3 _CYCLE_APPROX_2
+    #endif
+    #if ENABLED(Y_DUAL_STEPPER_DRIVERS)
+      #define _CYCLE_APPROX_4 _CYCLE_APPROX_3 + 4
+    #else
+      #define _CYCLE_APPROX_4 _CYCLE_APPROX_3
     #endif
     #if HAS_Z_STEP
-      #define _COUNT_STEPPERS_3 _COUNT_STEPPERS_2 + 1
+      #define _CYCLE_APPROX_5 _CYCLE_APPROX_4 + 5
     #else
-      #define _COUNT_STEPPERS_3 _COUNT_STEPPERS_2
+      #define _CYCLE_APPROX_5 _CYCLE_APPROX_4
+    #endif
+    #if ENABLED(Z_DUAL_STEPPER_DRIVERS)
+      #define _CYCLE_APPROX_6 _CYCLE_APPROX_5 + 4
+    #else
+      #define _CYCLE_APPROX_6 _CYCLE_APPROX_5
     #endif
     #if DISABLED(ADVANCE) && DISABLED(LIN_ADVANCE)
-      #define _COUNT_STEPPERS_4 _COUNT_STEPPERS_3 + 1
+      #if ENABLED(MIXING_EXTRUDER)
+        #define _CYCLE_APPROX_7 _CYCLE_APPROX_6 + (MIXING_STEPPERS) * 6
+      #else
+        #define _CYCLE_APPROX_7 _CYCLE_APPROX_6 + 5
+      #endif
     #else
-      #define _COUNT_STEPPERS_4 _COUNT_STEPPERS_3
+      #define _CYCLE_APPROX_7 _CYCLE_APPROX_6
     #endif
 
-    #define CYCLES_EATEN_XYZE ((_COUNT_STEPPERS_4) * 5)
+    #define CYCLES_EATEN_XYZE _CYCLE_APPROX_7
     #define EXTRA_CYCLES_XYZE (STEP_PULSE_CYCLES - (CYCLES_EATEN_XYZE))
 
-    // If a minimum pulse time was specified get the timer 0 value
-    // which increments every 4µs on 16MHz and every 3.2µs on 20MHz.
-    // Two or 3 counts of TCNT0 should be a sufficient delay.
+    /**
+     * If a minimum pulse time was specified get the timer 0 value.
+     *
+     * TCNT0 has an 8x prescaler, so it increments every 8 cycles.
+     * That's every 0.5µs on 16MHz and every 0.4µs on 20MHz.
+     * 20 counts of TCNT0 -by itself- is a good pulse delay.
+     * 10µs = 160 or 200 cycles.
+     */
     #if EXTRA_CYCLES_XYZE > 20
       uint32_t pulse_start = TCNT0;
     #endif
@@ -631,7 +680,7 @@ void Stepper::isr() {
       break;
     }
 
-    // For minimum pulse time wait before stopping pulses
+    // For minimum pulse time wait after stopping pulses also
     #if EXTRA_CYCLES_XYZE > 20
       if (i) while (EXTRA_CYCLES_XYZE > (uint32_t)(TCNT0 - pulse_start) * (INT0_PRESCALER)) { /* nada */ }
     #elif EXTRA_CYCLES_XYZE > 0
@@ -711,7 +760,7 @@ void Stepper::isr() {
     #endif // ADVANCE or LIN_ADVANCE
 
     #if ENABLED(ADVANCE) || ENABLED(LIN_ADVANCE)
-      eISR_Rate = ADV_RATE(timer, step_loops);
+      eISR_Rate = adv_rate(e_steps[TOOL_E_INDEX], timer, step_loops);
     #endif
   }
   else if (step_events_completed > (uint32_t)current_block->decelerate_after) {
@@ -765,7 +814,7 @@ void Stepper::isr() {
     #endif // ADVANCE or LIN_ADVANCE
 
     #if ENABLED(ADVANCE) || ENABLED(LIN_ADVANCE)
-      eISR_Rate = ADV_RATE(timer, step_loops);
+      eISR_Rate = adv_rate(e_steps[TOOL_E_INDEX], timer, step_loops);
     #endif
   }
   else {
@@ -775,7 +824,7 @@ void Stepper::isr() {
       if (current_block->use_advance_lead)
         current_estep_rate[TOOL_E_INDEX] = final_estep_rate;
 
-      eISR_Rate = ADV_RATE(OCR1A_nominal, step_loops_nominal);
+      eISR_Rate = adv_rate(e_steps[TOOL_E_INDEX], OCR1A_nominal, step_loops_nominal);
 
     #endif
 
@@ -830,6 +879,9 @@ void Stepper::isr() {
         SET_E_STEP_DIR(2);
         #if E_STEPPERS > 3
           SET_E_STEP_DIR(3);
+          #if E_STEPPERS > 4
+            SET_E_STEP_DIR(4);
+          #endif
         #endif
       #endif
     #endif
@@ -848,6 +900,9 @@ void Stepper::isr() {
           START_E_PULSE(2);
           #if E_STEPPERS > 3
             START_E_PULSE(3);
+            #if E_STEPPERS > 4
+              START_E_PULSE(4);
+            #endif
           #endif
         #endif
       #endif
@@ -867,6 +922,9 @@ void Stepper::isr() {
           STOP_E_PULSE(2);
           #if E_STEPPERS > 3
             STOP_E_PULSE(3);
+            #if E_STEPPERS > 4
+              STOP_E_PULSE(4);
+            #endif
           #endif
         #endif
       #endif
@@ -1273,7 +1331,7 @@ void Stepper::report_positions() {
   #endif
   SERIAL_PROTOCOL(zpos);
 
-  SERIAL_EOL;
+  SERIAL_EOL();
 }
 
 #if ENABLED(BABYSTEPPING)
@@ -1321,7 +1379,6 @@ void Stepper::report_positions() {
   // No other ISR should ever interrupt this!
   void Stepper::babystep(const AxisEnum axis, const bool direction) {
     cli();
-    uint8_t old_dir;
 
     switch (axis) {
 
