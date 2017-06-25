@@ -58,15 +58,15 @@
 //===========================================================================
 //============================= DELTA Printer ===============================
 //===========================================================================
-// For Delta printers start with one of the configuration files in the
+// For a Delta printer start with one of the configuration files in the
 // example_configurations/delta directory and customize for your machine.
 //
 
 //===========================================================================
 //============================= SCARA Printer ===============================
 //===========================================================================
-// For a Scara printer replace the configuration files with the files in the
-// example_configurations/SCARA directory.
+// For a SCARA printer start with the configuration files in
+// example_configurations/SCARA and customize for your machine.
 //
 
 // @section info
@@ -311,12 +311,13 @@
                                   // is more than PID_FUNCTIONAL_RANGE then the PID will be shut off and the heater will be set to min/max.
   #define K1 0.95 //smoothing factor within the PID
 
+  // If you are using a pre-configured hotend then you can use one of the value sets by uncommenting it
+
   //WT150, based on: M303 E0 S220 C8
   #define  DEFAULT_Kp 22.10
   #define  DEFAULT_Ki 1.10
   #define  DEFAULT_Kd 110.78
 
-  // If you are using a pre-configured hotend then you can use one of the value sets by uncommenting it
   // Ultimaker
   //#define  DEFAULT_Kp 22.2
   //#define  DEFAULT_Ki 1.08
@@ -533,6 +534,7 @@
 #define DEFAULT_ZJERK                  0.4
 #define DEFAULT_EJERK                  5.0
 
+
 //===========================================================================
 //============================= Z Probe Options =============================
 //===========================================================================
@@ -569,13 +571,12 @@
  *
  */
 //#define Z_MIN_PROBE_ENDSTOP
-//#define Z_MIN_PROBE_PIN Z_MAX_PIN
 
 /**
  * Probe Type
  *
  * Allen Key Probes, Servo Probes, Z-Sled Probes, FIX_MOUNTED_PROBE, etc.
- * Activate one of these to use Auto Bed Leveling below.
+ * You must activate one of these to use Auto Bed Leveling below.
  */
 
 /**
@@ -884,13 +885,16 @@
   #define UBL_MESH_INSET 1          // Mesh inset margin on print area
   #define GRID_MAX_POINTS_X 10      // Don't use more than 15 points per axis, implementation limited.
   #define GRID_MAX_POINTS_Y GRID_MAX_POINTS_X
-  #define UBL_PROBE_PT_1_X 39       // These set the probe locations for when UBL does a 3-Point leveling
-  #define UBL_PROBE_PT_1_Y 180      // of the mesh.
+
+  #define UBL_PROBE_PT_1_X 39       // Probing points for 3-Point leveling of the mesh
+  #define UBL_PROBE_PT_1_Y 180
   #define UBL_PROBE_PT_2_X 39
   #define UBL_PROBE_PT_2_Y 20
   #define UBL_PROBE_PT_3_X 180
   #define UBL_PROBE_PT_3_Y 20
-  //#define UBL_G26_MESH_EDITING    // Enable G26 mesh editing
+
+  #define UBL_G26_MESH_VALIDATION   // Enable G26 mesh validation
+  #define UBL_MESH_EDIT_MOVES_Z     // Sophisticated users prefer no movement of nozzle
 
 #elif ENABLED(MESH_BED_LEVELING)
 
@@ -1157,7 +1161,7 @@
  *  - Click the controller to view the LCD menu
  *  - The LCD will display Japanese, Western, or Cyrillic text
  *
- * See https: *github.com/MarlinFirmware/Marlin/wiki/LCD-Language
+ * See https://github.com/MarlinFirmware/Marlin/wiki/LCD-Language
  *
  * :['JAPANESE', 'WESTERN', 'CYRILLIC']
  */
@@ -1387,6 +1391,9 @@
 //
 // Sainsmart YW Robot (LCM1602) LCD Display
 //
+// Note: This controller requires F.Malpartida's LiquidCrystal_I2C library
+// https://bitbucket.org/fmalpartida/new-liquidcrystal/wiki/Home
+//
 //#define LCD_I2C_SAINSMART_YWROBOT
 
 //
@@ -1483,7 +1490,26 @@
 //define BlinkM/CyzRgb Support
 //#define BLINKM
 
-// Support for an RGB LED using 3 separate pins with optional PWM
+//define PCA9632 PWM LED driver Support
+//#define PCA9632
+
+/**
+ * RGB LED / LED Strip Control
+ *
+ * Enable support for an RGB LED connected to 5V digital pins, or
+ * an RGB Strip connected to MOSFETs controlled by digital pins.
+ *
+ * Adds the M150 command to set the LED (or LED strip) color.
+ * If pins are PWM capable (e.g., 4, 5, 6, 11) then a range of
+ * luminance values can be set from 0 to 255.
+ *
+ * *** CAUTION ***
+ *  LED Strips require a MOFSET Chip between PWM lines and LEDs,
+ *  as the Arduino cannot handle the current the LEDs will require.
+ *  Failure to follow this precaution can destroy your Arduino!
+ * *** CAUTION ***
+ *
+ */
 //#define RGB_LED
 //#define RGBW_LED
 #if ENABLED(RGB_LED) || ENABLED(RGBW_LED)
@@ -1504,7 +1530,7 @@
  *  - Change to green once print has finished
  *  - Turn off after the print has finished and the user has pushed a button
  */
-#if ENABLED(BLINKM) || ENABLED(RGB_LED) || ENABLED(RGBW_LED)
+#if ENABLED(BLINKM) || ENABLED(RGB_LED) || ENABLED(RGBW_LED) || ENABLED(PCA9632)
   #define PRINTER_EVENT_LEDS
 #endif
 
