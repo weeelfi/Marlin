@@ -97,6 +97,9 @@
   #elif ENABLED(DISPLAY_CHARSET_ISO10646_TR)
     #include "dogm_font_data_ISO10646_1_tr.h"
     #define FONT_MENU_NAME ISO10646_TR
+  #elif ENABLED(DISPLAY_CHARSET_ISO10646_CZ)
+    #include "dogm_font_data_ISO10646_CZ.h"
+    #define FONT_MENU_NAME ISO10646_CZ
   #else // fall-back
     #include "dogm_font_data_ISO10646_1.h"
     #define FONT_MENU_NAME ISO10646_1_5x7
@@ -256,6 +259,55 @@ void lcd_printPGM_utf(const char *str, uint8_t n=LCD_WIDTH) {
   while (n && (c = pgm_read_byte(str))) n -= charset_mapper(c), ++str;
 }
 
+#if ENABLED(SHOW_BOOTSCREEN)
+
+  #if ENABLED(SHOW_CUSTOM_BOOTSCREEN)
+
+    void lcd_custom_bootscreen() {
+      u8g.firstPage();
+      do {
+        u8g.drawBitmapP(
+          (128 - (CUSTOM_BOOTSCREEN_BMPWIDTH))  /2,
+          ( 64 - (CUSTOM_BOOTSCREEN_BMPHEIGHT)) /2,
+          CEILING(CUSTOM_BOOTSCREEN_BMPWIDTH, 8), CUSTOM_BOOTSCREEN_BMPHEIGHT, custom_start_bmp);
+      } while (u8g.nextPage());
+    }
+
+  #endif // SHOW_CUSTOM_BOOTSCREEN
+
+  void lcd_bootscreen() {
+
+    static bool show_bootscreen = true;
+
+    if (show_bootscreen) {
+      show_bootscreen = false;
+
+      #if ENABLED(START_BMPHIGH)
+        constexpr uint8_t offy = 0;
+      #else
+        constexpr uint8_t offy = DOG_CHAR_HEIGHT;
+      #endif
+
+      const uint8_t offx = (u8g.getWidth() - (START_BMPWIDTH)) / 2,
+                    txt1X = (u8g.getWidth() - (sizeof(STRING_SPLASH_LINE1) - 1) * (DOG_CHAR_WIDTH)) / 2;
+
+      u8g.firstPage();
+      do {
+        u8g.drawBitmapP(offx, offy, START_BMPBYTEWIDTH, START_BMPHEIGHT, start_bmp);
+        lcd_setFont(FONT_MENU);
+        #ifndef STRING_SPLASH_LINE2
+          u8g.drawStr(txt1X, u8g.getHeight() - (DOG_CHAR_HEIGHT), STRING_SPLASH_LINE1);
+        #else
+          const uint8_t txt2X = (u8g.getWidth() - (sizeof(STRING_SPLASH_LINE2) - 1) * (DOG_CHAR_WIDTH)) / 2;
+          u8g.drawStr(txt1X, u8g.getHeight() - (DOG_CHAR_HEIGHT) * 3 / 2, STRING_SPLASH_LINE1);
+          u8g.drawStr(txt2X, u8g.getHeight() - (DOG_CHAR_HEIGHT) * 1 / 2, STRING_SPLASH_LINE2);
+        #endif
+      } while (u8g.nextPage());
+    }
+  }
+
+#endif // SHOW_BOOTSCREEN
+
 // Initialize or re-initialize the LCD
 static void lcd_implementation_init() {
 
@@ -284,49 +336,12 @@ static void lcd_implementation_init() {
   #endif
 
   #if ENABLED(SHOW_BOOTSCREEN)
-    static bool show_bootscreen = true;
-
     #if ENABLED(SHOW_CUSTOM_BOOTSCREEN)
-      if (show_bootscreen) {
-        u8g.firstPage();
-        do {
-          u8g.drawBitmapP(
-            (128 - (CUSTOM_BOOTSCREEN_BMPWIDTH))  /2,
-            ( 64 - (CUSTOM_BOOTSCREEN_BMPHEIGHT)) /2,
-            CEILING(CUSTOM_BOOTSCREEN_BMPWIDTH, 8), CUSTOM_BOOTSCREEN_BMPHEIGHT, custom_start_bmp);
-        } while (u8g.nextPage());
-        safe_delay(CUSTOM_BOOTSCREEN_TIMEOUT);
-      }
-    #endif // SHOW_CUSTOM_BOOTSCREEN
-
-    const uint8_t offx = (u8g.getWidth() - (START_BMPWIDTH)) / 2;
-
-    #if ENABLED(START_BMPHIGH)
-      constexpr uint8_t offy = 0;
+      lcd_custom_bootscreen();
     #else
-      constexpr uint8_t offy = DOG_CHAR_HEIGHT;
+      lcd_bootscreen();
     #endif
-
-    const uint8_t txt1X = (u8g.getWidth() - (sizeof(STRING_SPLASH_LINE1) - 1) * (DOG_CHAR_WIDTH)) / 2;
-
-    if (show_bootscreen) {
-      u8g.firstPage();
-      do {
-        u8g.drawBitmapP(offx, offy, START_BMPBYTEWIDTH, START_BMPHEIGHT, start_bmp);
-        lcd_setFont(FONT_MENU);
-        #ifndef STRING_SPLASH_LINE2
-          u8g.drawStr(txt1X, u8g.getHeight() - (DOG_CHAR_HEIGHT), STRING_SPLASH_LINE1);
-        #else
-          const uint8_t txt2X = (u8g.getWidth() - (sizeof(STRING_SPLASH_LINE2) - 1) * (DOG_CHAR_WIDTH)) / 2;
-          u8g.drawStr(txt1X, u8g.getHeight() - (DOG_CHAR_HEIGHT) * 3 / 2, STRING_SPLASH_LINE1);
-          u8g.drawStr(txt2X, u8g.getHeight() - (DOG_CHAR_HEIGHT) * 1 / 2, STRING_SPLASH_LINE2);
-        #endif
-      } while (u8g.nextPage());
-    }
-
-    show_bootscreen = false;
-
-  #endif // SHOW_BOOTSCREEN
+  #endif
 }
 
 // The kill screen is displayed for unrecoverable conditions
@@ -354,20 +369,24 @@ FORCE_INLINE void _draw_centered_temp(const int16_t temp, const uint8_t x, const
 }
 
 FORCE_INLINE void _draw_heater_status(const uint8_t x, const int8_t heater, const bool blink) {
+  #if !HEATER_IDLE_HANDLER
+    UNUSED(blink);
+  #endif
+
   #if HAS_TEMP_BED
-    bool isBed = heater < 0;
+    const bool isBed = heater < 0;
   #else
-    const bool isBed = false;
+    constexpr bool isBed = false;
   #endif
 
   if (PAGE_UNDER(7)) {
     #if HEATER_IDLE_HANDLER
       const bool is_idle = (!isBed ? thermalManager.is_heater_idle(heater) :
-      #if HAS_TEMP_BED
-        thermalManager.is_bed_idle()
-      #else
-        false
-      #endif
+        #if HAS_TEMP_BED
+          thermalManager.is_bed_idle()
+        #else
+          false
+        #endif
       );
 
       if (blink || !is_idle)
@@ -837,12 +856,15 @@ static void lcd_implementation_status_screen() {
 
   #define DEFINE_LCD_IMPLEMENTATION_DRAWMENU_SETTING_EDIT_TYPE(_type, _name, _strFunc) \
     inline void lcd_implementation_drawmenu_setting_edit_ ## _name (const bool sel, const uint8_t row, const char* pstr, const char* pstr2, _type * const data, ...) { \
+      UNUSED(pstr2); \
       lcd_implementation_drawmenu_setting_edit_generic(sel, row, pstr, _strFunc(*(data))); \
     } \
     inline void lcd_implementation_drawmenu_setting_edit_callback_ ## _name (const bool sel, const uint8_t row, const char* pstr, const char* pstr2, _type * const data, ...) { \
+      UNUSED(pstr2); \
       lcd_implementation_drawmenu_setting_edit_generic(sel, row, pstr, _strFunc(*(data))); \
     } \
     inline void lcd_implementation_drawmenu_setting_edit_accessor_ ## _name (const bool sel, const uint8_t row, const char* pstr, const char* pstr2, _type (*pget)(), void (*pset)(_type), ...) { \
+      UNUSED(pstr2); UNUSED(pset); \
       lcd_implementation_drawmenu_setting_edit_generic(sel, row, pstr, _strFunc(pget())); \
     } \
     typedef void _name##_void
@@ -954,8 +976,8 @@ static void lcd_implementation_status_screen() {
       uint8_t x_map_pixels = ((MAP_MAX_PIXELS_X - 4) / (GRID_MAX_POINTS_X)) * (GRID_MAX_POINTS_X),
               y_map_pixels = ((MAP_MAX_PIXELS_Y - 4) / (GRID_MAX_POINTS_Y)) * (GRID_MAX_POINTS_Y),
 
-              pixels_per_X_mesh_pnt = x_map_pixels / (GRID_MAX_POINTS_X),
-              pixels_per_Y_mesh_pnt = y_map_pixels / (GRID_MAX_POINTS_Y),
+              pixels_per_x_mesh_pnt = x_map_pixels / (GRID_MAX_POINTS_X),
+              pixels_per_y_mesh_pnt = y_map_pixels / (GRID_MAX_POINTS_Y),
 
               x_offset = MAP_UPPER_LEFT_CORNER_X + 1 + (MAP_MAX_PIXELS_X - x_map_pixels - 2) / 2,
               y_offset = MAP_UPPER_LEFT_CORNER_Y + 1 + (MAP_MAX_PIXELS_Y - y_map_pixels - 2) / 2;
@@ -974,11 +996,11 @@ static void lcd_implementation_status_screen() {
       // Display Mesh Point Locations
 
       u8g.setColorIndex(1);
-      const uint8_t sx = x_offset + pixels_per_X_mesh_pnt / 2;
-            uint8_t  y = y_offset + pixels_per_Y_mesh_pnt / 2;
-      for (uint8_t j = 0; j < GRID_MAX_POINTS_Y; j++, y += pixels_per_Y_mesh_pnt)
+      const uint8_t sx = x_offset + pixels_per_x_mesh_pnt / 2;
+            uint8_t  y = y_offset + pixels_per_y_mesh_pnt / 2;
+      for (uint8_t j = 0; j < GRID_MAX_POINTS_Y; j++, y += pixels_per_y_mesh_pnt)
         if (PAGE_CONTAINS(y, y))
-          for (uint8_t i = 0, x = sx; i < GRID_MAX_POINTS_X; i++, x += pixels_per_X_mesh_pnt)
+          for (uint8_t i = 0, x = sx; i < GRID_MAX_POINTS_X; i++, x += pixels_per_x_mesh_pnt)
             u8g.drawBox(sx, y, 1, 1);
 
       // Fill in the Specified Mesh Point
@@ -986,11 +1008,11 @@ static void lcd_implementation_status_screen() {
       uint8_t inverted_y = GRID_MAX_POINTS_Y - y_plot - 1;  // The origin is typically in the lower right corner.  We need to
                                                             // invert the Y to get it to plot in the right location.
 
-      const uint8_t by = y_offset + inverted_y * pixels_per_Y_mesh_pnt;
-      if (PAGE_CONTAINS(by, by + pixels_per_Y_mesh_pnt))
+      const uint8_t by = y_offset + inverted_y * pixels_per_y_mesh_pnt;
+      if (PAGE_CONTAINS(by, by + pixels_per_y_mesh_pnt))
         u8g.drawBox(
-          x_offset + x_plot * pixels_per_X_mesh_pnt, by,
-          pixels_per_X_mesh_pnt, pixels_per_Y_mesh_pnt
+          x_offset + x_plot * pixels_per_x_mesh_pnt, by,
+          pixels_per_x_mesh_pnt, pixels_per_y_mesh_pnt
         );
 
       // Put Relevant Text on Display
