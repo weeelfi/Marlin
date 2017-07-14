@@ -276,7 +276,9 @@
 #if ENABLED(I2C_POSITION_ENCODERS)
   #if DISABLED(BABYSTEPPING)
     #error "I2C_POSITION_ENCODERS requires BABYSTEPPING."
-  #elif !WITHIN(I2CPE_ENCODER_CNT, 1, 5)
+  #endif
+
+  #if I2CPE_ENCODER_CNT > 5 || I2CPE_ENCODER_CNT < 1
     #error "I2CPE_ENCODER_CNT must be between 1 and 5."
   #endif
 #endif
@@ -350,19 +352,8 @@
     #error "EXTRUDERS must be 1 with HEATERS_PARALLEL."
   #endif
 
-#elif ENABLED(MK2_MULTIPLEXER)
-  #error "MK2_MULTIPLEXER requires 2 or more EXTRUDERS."
 #elif ENABLED(SINGLENOZZLE)
   #error "SINGLENOZZLE requires 2 or more EXTRUDERS."
-#endif
-
-/**
- * Sanity checking for the Průša MK2 Multiplexer
- */
-#ifdef SNMM
-  #error "SNMM is now MK2_MULTIPLEXER. Please update your configuration."
-#elif ENABLED(MK2_MULTIPLEXER) && DISABLED(ADVANCED_PAUSE_FEATURE)
-  #error "ADVANCED_PAUSE_FEATURE is required with MK2_MULTIPLEXER."
 #endif
 
 /**
@@ -1111,7 +1102,7 @@ static_assert(1 >= 0
   #if ENABLED(MINIPANEL)
     + 1
   #endif
-  #if ENABLED(REPRAPWORLD_KEYPAD) && DISABLED(CARTESIO_UI) && DISABLED(ANET_KEYPAD_LCD)
+  #if ENABLED(REPRAPWORLD_KEYPAD) && DISABLED(CARTESIO_UI)
     + 1
   #endif
   #if ENABLED(RIGIDBOT_PANEL)
@@ -1145,9 +1136,6 @@ static_assert(1 >= 0
     + 1
   #endif
   #if ENABLED(OLED_PANEL_TINYBOY2)
-    + 1
-  #endif
-  #if ENABLED(ANET_KEYPAD_LCD)
     + 1
   #endif
   , "Please select no more than one LCD controller option."

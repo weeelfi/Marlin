@@ -31,10 +31,6 @@
 #include "utility.h"
 #include "duration_t.h"
 
-#if ENABLED(AUTO_BED_LEVELING_UBL)
-  #include "ubl.h"
-#endif
-
 extern volatile uint8_t buttons;  //an extended version of the last checked buttons in a bit array.
 
 ////////////////////////////////////
@@ -421,7 +417,7 @@ void lcd_printPGM_utf(const char *str, uint8_t n=LCD_WIDTH) {
   void lcd_erase_line(const int16_t line) {
     lcd.setCursor(0, line);
     for (uint8_t i = LCD_WIDTH + 1; --i;)
-      lcd.write(' ');
+      lcd.print(' ');
   }
 
   // Scroll the PSTR 'text' in a 'len' wide field for 'time' milliseconds at position col,line
@@ -438,9 +434,9 @@ void lcd_printPGM_utf(const char *str, uint8_t n=LCD_WIDTH) {
 
   static void logo_lines(const char* const extra) {
     int16_t indent = (LCD_WIDTH - 8 - lcd_strlen_P(extra)) / 2;
-    lcd.setCursor(indent, 0); lcd.print('\x00'); lcd_printPGM(PSTR( "------" ));  lcd.write('\x01');
+    lcd.setCursor(indent, 0); lcd.print('\x00'); lcd_printPGM(PSTR( "------" ));  lcd.print('\x01');
     lcd.setCursor(indent, 1);                    lcd_printPGM(PSTR("|Marlin|"));  lcd_printPGM(extra);
-    lcd.setCursor(indent, 2); lcd.write('\x02'); lcd_printPGM(PSTR( "------" ));  lcd.write('\x03');
+    lcd.setCursor(indent, 2); lcd.print('\x02'); lcd_printPGM(PSTR( "------" ));  lcd.print('\x03');
   }
 
   void bootscreen() {
@@ -581,11 +577,11 @@ FORCE_INLINE void _draw_axis_label(const AxisEnum axis, const char* const pstr, 
     lcd_printPGM(pstr);
   else {
     if (!axis_homed[axis])
-      lcd.write('?');
+      lcd.print('?');
     else {
       #if DISABLED(DISABLE_REDUCED_ACCURACY_WARNING)
         if (!axis_known_position[axis])
-          lcd.write(' ');
+          lcd.print(' ');
         else
       #endif
       lcd_printPGM(pstr);
@@ -602,7 +598,7 @@ FORCE_INLINE void _draw_heater_status(const int8_t heater, const char prefix, co
   if (prefix >= 0) lcd.print(prefix);
 
   lcd.print(itostr3(t1 + 0.5));
-  lcd.write('/');
+  lcd.print('/');
 
   #if HEATER_IDLE_HANDLER
     const bool is_idle = (!isBed ? thermalManager.is_heater_idle(heater) :
@@ -614,9 +610,9 @@ FORCE_INLINE void _draw_heater_status(const int8_t heater, const char prefix, co
     );
 
     if (!blink && is_idle) {
-      lcd.write(' ');
-      if (t2 >= 10) lcd.write(' ');
-      if (t2 >= 100) lcd.write(' ');
+      lcd.print(' ');
+      if (t2 >= 10) lcd.print(' ');
+      if (t2 >= 100) lcd.print(' ');
     }
     else
   #endif
@@ -624,8 +620,8 @@ FORCE_INLINE void _draw_heater_status(const int8_t heater, const char prefix, co
 
   if (prefix >= 0) {
     lcd.print((char)LCD_DEGREE_CHAR);
-    lcd.write(' ');
-    if (t2 < 10) lcd.write(' ');
+    lcd.print(' ');
+    if (t2 < 10) lcd.print(' ');
   }
 }
 
@@ -742,7 +738,7 @@ static void lcd_implementation_status_screen() {
           lcd.print(itostr3(card.percentDone()));
         else
           lcd_printPGM(PSTR("---"));
-          lcd.write('%');
+          lcd.print('%');
       #endif // SDSUPPORT
 
     #else // LCD_WIDTH >= 20
@@ -764,7 +760,7 @@ static void lcd_implementation_status_screen() {
         _draw_axis_label(X_AXIS, PSTR(MSG_X), blink);
         lcd.print(ftostr4sign(current_position[X_AXIS]));
 
-        lcd.write(' ');
+        lcd.print(' ');
 
         _draw_axis_label(Y_AXIS, PSTR(MSG_Y), blink);
         lcd.print(ftostr4sign(current_position[Y_AXIS]));
@@ -788,7 +784,7 @@ static void lcd_implementation_status_screen() {
     lcd.setCursor(0, 2);
     lcd.print((char)LCD_FEEDRATE_CHAR);
     lcd.print(itostr3(feedrate_percentage));
-    lcd.write('%');
+    lcd.print('%');
 
     #if LCD_WIDTH >= 20 && ENABLED(SDSUPPORT)
 
@@ -798,7 +794,7 @@ static void lcd_implementation_status_screen() {
         lcd.print(itostr3(card.percentDone()));
       else
         lcd_printPGM(PSTR("---"));
-      lcd.write('%');
+      lcd.print('%');
 
     #endif // LCD_WIDTH >= 20 && SDSUPPORT
 
@@ -837,7 +833,7 @@ static void lcd_implementation_status_screen() {
       lcd.print(ftostr12ns(filament_width_meas));
       lcd_printPGM(PSTR(" V"));
       lcd.print(itostr3(100.0 * volumetric_multiplier[FILAMENT_SENSOR_EXTRUDER_NUM]));
-      lcd.write('%');
+      lcd.print('%');
       return;
     }
 
@@ -858,10 +854,10 @@ static void lcd_implementation_status_screen() {
           lcd_print_utf(stat);                                  // The string leaves space
           chars -= slen - status_scroll_pos;                    // Amount of space left
         }
-        lcd.write('.');                                         // Always at 1+ spaces left, draw a dot
+        lcd.print('.');                                         // Always at 1+ spaces left, draw a dot
         if (--chars) {
           if (status_scroll_pos < slen + 1)                     // Draw a second dot if there's space
-            --chars, lcd.write('.');
+            --chars, lcd.print('.');
           if (chars) lcd_print_utf(lcd_status_message, chars);  // Print a second copy of the message
         }
       }
@@ -897,7 +893,7 @@ static void lcd_implementation_status_screen() {
     lcd.setCursor(0, row);
     if (center && !valstr) {
       int8_t pad = (LCD_WIDTH - lcd_strlen_P(pstr)) / 2;
-      while (--pad >= 0) { lcd.write(' '); n--; }
+      while (--pad >= 0) { lcd.print(' '); n--; }
     }
     while (n > 0 && (c = pgm_read_byte(pstr))) {
       n -= charset_mapper(c);
@@ -907,7 +903,7 @@ static void lcd_implementation_status_screen() {
       n -= charset_mapper(c);
       valstr++;
     }
-    while (n-- > 0) lcd.write(' ');
+    while (n-- > 0) lcd.print(' ');
   }
 
   static void lcd_implementation_drawmenu_generic(const bool sel, const uint8_t row, const char* pstr, const char pre_char, const char post_char) {
@@ -919,7 +915,7 @@ static void lcd_implementation_status_screen() {
       n -= charset_mapper(c);
       pstr++;
     }
-    while (n--) lcd.write(' ');
+    while (n--) lcd.print(' ');
     lcd.print(post_char);
   }
 
@@ -932,8 +928,8 @@ static void lcd_implementation_status_screen() {
       n -= charset_mapper(c);
       pstr++;
     }
-    lcd.write(':');
-    while (n--) lcd.write(' ');
+    lcd.print(':');
+    while (n--) lcd.print(' ');
     lcd_print(data);
   }
   static void lcd_implementation_drawmenu_setting_edit_generic_P(const bool sel, const uint8_t row, const char* pstr, const char pre_char, const char* const data) {
@@ -945,8 +941,8 @@ static void lcd_implementation_status_screen() {
       n -= charset_mapper(c);
       pstr++;
     }
-    lcd.write(':');
-    while (n--) lcd.write(' ');
+    lcd.print(':');
+    while (n--) lcd.print(' ');
     lcd_printPGM(data);
   }
 
@@ -981,10 +977,10 @@ static void lcd_implementation_status_screen() {
     lcd.setCursor(1, 1);
     lcd_printPGM(pstr);
     if (value != NULL) {
-      lcd.write(':');
+      lcd.print(':');
       const uint8_t valrow = (lcd_strlen_P(pstr) + 1 + lcd_strlen(value) + 1) > (LCD_WIDTH - 2) ? 2 : 1;  // Value on the next row if it won't fit
       lcd.setCursor((LCD_WIDTH - 1) - (lcd_strlen(value) + 1), valrow);                                   // Right-justified, padded by spaces
-      lcd.write(' ');                                                                                     // overwrite char if value gets shorter
+      lcd.print(' ');                                                                                     // overwrite char if value gets shorter
       lcd_print(value);
     }
   }
@@ -1005,7 +1001,7 @@ static void lcd_implementation_status_screen() {
         n -= charset_mapper(c);
         filename++;
       }
-      while (n--) lcd.write(' ');
+      while (n--) lcd.print(' ');
       lcd.print(post_char);
     }
 
@@ -1083,152 +1079,10 @@ static void lcd_implementation_status_screen() {
 
 #endif // LCD_HAS_STATUS_INDICATORS
 
-#if ENABLED(AUTO_BED_LEVELING_UBL)
-
-    /* 
-     * These are just basic data for the 20x4 LCD work that
-     * is coming up very soon.
-     * Soon this will morph into a map code.
-     */
-
-    /**
-    Possible map screens:
-
-    16x2   |X000.00  Y000.00|
-           |(00,00)  Z00.000|
-
-    20x2   | X:000.00  Y:000.00 |
-           | (00,00)   Z:00.000 |
-
-    16x4   |+-------+(00,00)|
-           ||       |X000.00|
-           ||       |Y000.00|
-           |+-------+Z00.000|
-
-    20x4   | +-------+  (00,00) |
-           | |       |  X:000.00|
-           | |       |  Y:000.00|
-           | +-------+  Z:00.000|
-    */
-
-    void lcd_set_ubl_map_plot_chars() {
-      #if LCD_HEIGHT > 3
-        //#include "_ubl_lcd_map_characters.h"
-        const static byte _lcd_box_top[8] PROGMEM = {
-          B11111,
-          B00000,
-          B00000,
-          B00000,
-          B00000,
-          B00000,
-          B00000,
-          B00000
-        };
-        const static byte _lcd_box_bottom[8] PROGMEM = {
-          B00000,
-          B00000,
-          B00000,
-          B00000,
-          B00000,
-          B00000,
-          B00000,
-          B11111
-        };
-        createChar_P(1, _lcd_box_top);
-        createChar_P(2, _lcd_box_bottom);
-      #endif
-    }
-
-    void lcd_implementation_ubl_plot(const uint8_t x_plot, const uint8_t y_plot) {
-
-      #if LCD_WIDTH >= 20
-        #define _LCD_W_POS 12
-        #define _PLOT_X 1
-        #define _MAP_X 3
-        #define _LABEL(C,X,Y) lcd.setCursor(X, Y); lcd.print(C)
-        #define _XLABEL(X,Y) _LABEL("X:",X,Y)
-        #define _YLABEL(X,Y) _LABEL("Y:",X,Y)
-        #define _ZLABEL(X,Y) _LABEL("Z:",X,Y)
-      #else
-        #define _LCD_W_POS 8
-        #define _PLOT_X 0
-        #define _MAP_X 1
-        #define _LABEL(X,Y,C) lcd.setCursor(X, Y); lcd.write(C)
-        #define _XLABEL(X,Y) _LABEL('X',X,Y)
-        #define _YLABEL(X,Y) _LABEL('Y',X,Y)
-        #define _ZLABEL(X,Y) _LABEL('Z',X,Y)
-      #endif
-
-      #if LCD_HEIGHT <= 3   // 16x2 or 20x2 display
-
-        /**
-         * Show X and Y positions
-         */
-        _XLABEL(_PLOT_X, 0);
-        lcd.print(ftostr32(LOGICAL_X_POSITION(pgm_read_float(&ubl._mesh_index_to_xpos[x_plot]))));
-
-        _YLABEL(_LCD_W_POS, 0);
-        lcd.print(ftostr32(LOGICAL_Y_POSITION(pgm_read_float(&ubl._mesh_index_to_ypos[y_plot]))));
-
-        lcd.setCursor(_PLOT_X, 0);
-
-      #else                 // 16x4 or 20x4 display
-
-        /**
-         * Draw the Mesh Map Box
-         */
-        uint8_t m;
-        lcd.setCursor(_MAP_X, 0); for (m = 0; m < 5; m++) lcd.write(1); // Top
-        lcd.setCursor(_MAP_X, 3); for (m = 0; m < 5; m++) lcd.write(2); // Bottom
-        for (m = 0; m <= 3; m++) {
-          lcd.setCursor(2, m); lcd.write('|'); // Left
-          lcd.setCursor(8, m); lcd.write('|'); // Right
-        }
-
-        lcd.setCursor(_LCD_W_POS, 0);
-
-      #endif
-
-      /**
-       * Print plot position
-       */
-      lcd.write('(');
-      lcd.print(x_plot);
-      lcd.write(',');
-      lcd.print(y_plot);
-      lcd.write(')');
-
-      #if LCD_HEIGHT <= 3   // 16x2 or 20x2 display
-
-        /**
-         * Print Z values
-         */
-        _ZLABEL(_LCD_W_POS, 1);
-        if (!isnan(ubl.z_values[x_plot][y_plot]))
-          lcd.print(ftostr43sign(ubl.z_values[x_plot][y_plot]));
-        else
-          lcd_printPGM(PSTR(" -----"));
-
-      #else                 // 16x4 or 20x4 display
-
-        /**
-         * Show all values at right of screen
-         */
-        _XLABEL(_LCD_W_POS, 1);
-        lcd.print(ftostr32(LOGICAL_X_POSITION(pgm_read_float(&ubl._mesh_index_to_xpos[x_plot]))));
-        _YLABEL(_LCD_W_POS, 2);
-        lcd.print(ftostr32(LOGICAL_Y_POSITION(pgm_read_float(&ubl._mesh_index_to_ypos[y_plot]))));
-
-        /**
-         * Show the location value
-         */
-        _ZLABEL(_LCD_W_POS, 3);
-        if (!isnan(ubl.z_values[x_plot][y_plot]))
-          lcd.print(ftostr43sign(ubl.z_values[x_plot][y_plot]));
-        else
-          lcd_printPGM(PSTR(" -----"));
-
-      #endif // LCD_HEIGHT > 3
+#ifdef AUTO_BED_LEVELING_UBL
+    void lcd_return_to_status();       // These are just place holders for the 20x4 LCD work that
+    void _lcd_ubl_output_char_lcd() {  // is coming up very soon.   Soon this will morph into the
+      lcd_return_to_status();          // real code.
     }
 
 #endif // AUTO_BED_LEVELING_UBL

@@ -31,43 +31,22 @@
   #define LCD_HAS_DIRECTIONAL_BUTTONS (BUTTON_EXISTS(UP) || BUTTON_EXISTS(DWN) || BUTTON_EXISTS(LFT) || BUTTON_EXISTS(RT))
 
   #if ENABLED(CARTESIO_UI)
-
     #define DOGLCD
     #define ULTIPANEL
     #define NEWPANEL
     #define DEFAULT_LCD_CONTRAST 90
     #define LCD_CONTRAST_MIN 60
     #define LCD_CONTRAST_MAX 140
+  #endif
 
-  #elif ENABLED(MAKRPANEL) || ENABLED(MINIPANEL)
-
+  #if ENABLED(MAKRPANEL) || ENABLED(MINIPANEL)
     #define DOGLCD
     #define ULTIPANEL
     #define NEWPANEL
     #define DEFAULT_LCD_CONTRAST 17
+  #endif
 
-  #elif ENABLED(ANET_KEYPAD_LCD)
-
-    #define REPRAPWORLD_KEYPAD
-    #define REPRAPWORLD_KEYPAD_MOVE_STEP 10.0
-    #define ADC_KEYPAD
-    #define ADC_KEY_NUM 8
-    #define ULTIPANEL
-    // this helps to implement ADC_KEYPAD menus
-    #define ENCODER_STEPS_PER_MENU_ITEM 1
-    #define REVERSE_MENU_DIRECTION
-
-  #elif ENABLED(ANET_FULL_GRAPHICS_LCD)
-
-    #define REPRAP_DISCOUNT_FULL_GRAPHIC_SMART_CONTROLLER
-
-  #elif ENABLED(BQ_LCD_SMART_CONTROLLER)
-
-    #define REPRAP_DISCOUNT_FULL_GRAPHIC_SMART_CONTROLLER
-    #define LONG_FILENAME_HOST_SUPPORT
-
-  #elif ENABLED(miniVIKI) || ENABLED(VIKI2) || ENABLED(ELB_FULL_GRAPHIC_CONTROLLER)
-
+  #if ENABLED(miniVIKI) || ENABLED(VIKI2) || ENABLED(ELB_FULL_GRAPHIC_CONTROLLER)
     #define ULTRA_LCD  //general LCD support, also 16x2
     #define DOGLCD  // Support for SPI LCD 128x64 (Controller ST7565R graphic Display Family)
     #define ULTIMAKERCONTROLLER //as available from the Ultimaker online store.
@@ -86,28 +65,14 @@
       #define SD_DETECT_INVERTED
     #endif
 
-  #elif ENABLED(OLED_PANEL_TINYBOY2)
+  #endif
 
+  #if ENABLED(OLED_PANEL_TINYBOY2)
     #define U8GLIB_SSD1306
     #define ULTIPANEL
     #define NEWPANEL
     #define REVERSE_ENCODER_DIRECTION
     #define REVERSE_MENU_DIRECTION
-
-  #elif ENABLED(RA_CONTROL_PANEL)
-
-    #define LCD_I2C_TYPE_PCA8574
-    #define LCD_I2C_ADDRESS 0x27   // I2C Address of the port expander
-    #define ULTIPANEL
-    #define NEWPANEL
-
-  #elif ENABLED(REPRAPWORLD_GRAPHICAL_LCD)
-
-    #define DOGLCD
-    #define U8GLIB_ST7920
-    #define ULTIPANEL
-    #define NEWPANEL
-
   #endif
 
   // Generic support for SSD1306 / SH1106 OLED based LCDs.
@@ -118,6 +83,13 @@
 
   #if ENABLED(PANEL_ONE) || ENABLED(U8GLIB_SH1106)
     #define ULTIMAKERCONTROLLER
+  #endif
+
+  #if ENABLED(BQ_LCD_SMART_CONTROLLER)
+    #define REPRAP_DISCOUNT_FULL_GRAPHIC_SMART_CONTROLLER
+    #ifndef LONG_FILENAME_HOST_SUPPORT
+      #define LONG_FILENAME_HOST_SUPPORT
+    #endif
   #endif
 
   #if ENABLED(REPRAP_DISCOUNT_FULL_GRAPHIC_SMART_CONTROLLER)
@@ -141,40 +113,48 @@
     #endif
   #endif
 
+  #if ENABLED(RA_CONTROL_PANEL)
+    #define LCD_I2C_TYPE_PCA8574
+    #define LCD_I2C_ADDRESS 0x27   // I2C Address of the port expander
+    #define ULTIPANEL
+    #define NEWPANEL
+  #endif
+
+  #if ENABLED(REPRAPWORLD_GRAPHICAL_LCD)
+    #define DOGLCD
+    #define U8GLIB_ST7920
+    #define ULTIPANEL
+    #define NEWPANEL
+  #endif
+
   /**
    * I2C PANELS
    */
 
   #if ENABLED(LCD_I2C_SAINSMART_YWROBOT)
-
     // Note: This controller requires F.Malpartida's LiquidCrystal_I2C library
     // https://bitbucket.org/fmalpartida/new-liquidcrystal/wiki/Home
-
     #define LCD_I2C_TYPE_PCF8575
     #define LCD_I2C_ADDRESS 0x27   // I2C Address of the port expander
     #define ULTIPANEL
     #define NEWPANEL
+  #endif
 
-  #elif ENABLED(LCD_I2C_PANELOLU2)
-
-    // PANELOLU2 LCD with status LEDs, separate encoder and click inputs
-
+  // PANELOLU2 LCD with status LEDs, separate encoder and click inputs
+  #if ENABLED(LCD_I2C_PANELOLU2)
     #define LCD_I2C_TYPE_MCP23017
     #define LCD_I2C_ADDRESS 0x20 // I2C Address of the port expander
     #define LCD_USE_I2C_BUZZER //comment out to disable buzzer on LCD
     #define ULTIPANEL
     #define NEWPANEL
+  #endif
 
-  #elif ENABLED(LCD_I2C_VIKI)
-
-    /**
-     * Panucatt VIKI LCD with status LEDs, integrated click & L/R/U/P buttons, separate encoder inputs
-     *
-     * This uses the LiquidTWI2 library v1.2.3 or later ( https://github.com/lincomatic/LiquidTWI2 )
-     * Make sure the LiquidTWI2 directory is placed in the Arduino or Sketchbook libraries subdirectory.
-     * Note: The pause/stop/resume LCD button pin should be connected to the Arduino
-     *       BTN_ENC pin (or set BTN_ENC to -1 if not used)
-     */
+  // Panucatt VIKI LCD with status LEDs, integrated click & L/R/U/P buttons, separate encoder inputs
+  #if ENABLED(LCD_I2C_VIKI)
+    // This uses the LiquidTWI2 library v1.2.3 or later ( https://github.com/lincomatic/LiquidTWI2 )
+    // Make sure the LiquidTWI2 directory is placed in the Arduino or Sketchbook libraries subdirectory.
+    // Note: The pause/stop/resume LCD button pin should be connected to the Arduino
+    //       BTN_ENC pin (or set BTN_ENC to -1 if not used)
     #define LCD_I2C_TYPE_MCP23017
     #define LCD_I2C_ADDRESS 0x20 // I2C Address of the port expander
     #define LCD_USE_I2C_BUZZER //comment out to disable buzzer on LCD (requires LiquidTWI2 v1.2.3 or later)
@@ -307,11 +287,6 @@
 
   #define HAS_DEBUG_MENU ENABLED(LCD_PROGRESS_BAR_TEST)
 
-  // MK2 Multiplexer forces SINGLENOZZLE to be enabled
-  #if ENABLED(MK2_MULTIPLEXER)
-    #define SINGLENOZZLE
-  #endif
-
   /**
    * Extruders have some combination of stepper motors and hotends
    * so we separate these concepts into the defines:
@@ -319,7 +294,6 @@
    *  EXTRUDERS    - Number of Selectable Tools
    *  HOTENDS      - Number of hotends, whether connected or separate
    *  E_STEPPERS   - Number of actual E stepper motors
-   *  E_MANUAL     - Number of E steppers for LCD move options
    *  TOOL_E_INDEX - Index to use when getting/setting the tool state
    *
    */

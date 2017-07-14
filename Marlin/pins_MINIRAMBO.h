@@ -85,9 +85,7 @@
 #define MOTOR_CURRENT_PWM_Z_PIN  45
 #define MOTOR_CURRENT_PWM_E_PIN  44
 // Motor current PWM conversion, PWM value = MotorCurrentSetting * 255 / range
-#ifndef MOTOR_CURRENT_PWM_RANGE
-  #define MOTOR_CURRENT_PWM_RANGE 2000
-#endif
+#define MOTOR_CURRENT_PWM_RANGE 2000
 #define DEFAULT_PWM_MOTOR_CURRENT  {1300, 1300, 1250}
 
 //
@@ -114,21 +112,6 @@
 #define SDSS               53
 #define LED_PIN            13
 #define CASE_LIGHT_PIN      9
-
-//
-// M3/M4/M5 - Spindle/Laser Control
-//
-// use P1 connector for spindle pins
-#define SPINDLE_LASER_PWM_PIN     9  // MUST BE HARDWARE PWM
-#define SPINDLE_LASER_ENABLE_PIN 18  // Pin should have a pullup!
-#define SPINDLE_DIR_PIN          19
-
-//
-// Průša i3 MK2 Multiplexer Support
-//
-#define E_MUX0_PIN         17
-#define E_MUX1_PIN         16
-#define E_MUX2_PIN         78 // 84 in MK2 Firmware, with BEEPER as 78
 
 //
 // LCD / Controller
@@ -158,3 +141,12 @@
 
   #endif // NEWPANEL
 #endif // ULTRA_LCD
+
+//
+// M3/M4/M5 - Spindle/Laser Control
+//
+
+// use P1 connector for spindle pins
+#define SPINDLE_LASER_PWM_PIN     9  // MUST BE HARDWARE PWM
+#define SPINDLE_LASER_ENABLE_PIN 18  // Pin should have a pullup!
+#define SPINDLE_DIR_PIN          19

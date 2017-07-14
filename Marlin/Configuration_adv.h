@@ -123,8 +123,8 @@
   #define AUTOTEMP_OLDWEIGHT 0.98
 #endif
 
-// Show Temperature ADC value
-// Enable for M105 to include ADC values read from temperature sensors.
+//Show Temperature ADC value
+//The M105 command return, besides traditional information, the ADC value read from temperature sensors.
 //#define SHOW_TEMP_ADC_VALUES
 
 /**
@@ -223,12 +223,12 @@
 /**
  * M355 Case Light on-off / brightness
  */
-//#define CASE_LIGHT_ENABLE
+#define CASE_LIGHT_ENABLE
 #if ENABLED(CASE_LIGHT_ENABLE)
-  #define CASE_LIGHT_PIN 6                  // Override the default pin if needed
+  //#define CASE_LIGHT_PIN 6                  // Override the default pin if needed
   #define INVERT_CASE_LIGHT false             // Set true if Case Light is ON when pin is LOW
   #define CASE_LIGHT_DEFAULT_ON true          // Set default power-up state on
-  #define CASE_LIGHT_DEFAULT_BRIGHTNESS 105   // Set default power-up brightness (0-255, requires PWM pin)
+  #define CASE_LIGHT_DEFAULT_BRIGHTNESS 255   // Set default power-up brightness (0-255, requires PWM pin)
   #define MENU_ITEM_CASE_LIGHT              // Add a Case Light option to the LCD main menu
 #endif
 
@@ -648,7 +648,7 @@
    *
    * Set to 0 to auto-detect the ratio based on given Gcode G1 print moves.
    *
-   * Slic3r (including Průša Slic3r) produces Gcode compatible with the automatic mode.
+   * Slic3r (including Prusa Slic3r) produces Gcode compatible with the automatic mode.
    * Cura (as of this writing) may produce Gcode incompatible with the automatic mode.
    */
   #define LIN_ADVANCE_E_D_RATIO 0 // The calculated ratio (or 0) according to the formula W * H / ((D / 2) ^ 2 * PI)
@@ -666,10 +666,15 @@
   #define MESH_MIN_Y (Y_MIN_POS + MESH_INSET)
   #define MESH_MAX_Y (Y_MAX_POS - (MESH_INSET))
 #elif ENABLED(AUTO_BED_LEVELING_UBL)
-  #define UBL_MESH_MIN_X (X_MIN_POS + UBL_MESH_INSET)
-  #define UBL_MESH_MAX_X (X_MAX_POS - (UBL_MESH_INSET))
-  #define UBL_MESH_MIN_Y (Y_MIN_POS + UBL_MESH_INSET)
-  #define UBL_MESH_MAX_Y (Y_MAX_POS - (UBL_MESH_INSET))
+  //#define UBL_MESH_MIN_X (X_MIN_POS + UBL_MESH_INSET)
+  //#define UBL_MESH_MAX_X (X_MAX_POS - (UBL_MESH_INSET))
+  //#define UBL_MESH_MIN_Y (Y_MIN_POS + UBL_MESH_INSET)
+  //#define UBL_MESH_MAX_Y (Y_MAX_POS - (UBL_MESH_INSET))
+
+#define UBL_MESH_MIN_X (0)
+#define UBL_MESH_MAX_X (300)
+#define UBL_MESH_MIN_Y (35)
+#define UBL_MESH_MAX_Y (190)
 
   // If this is defined, the currently active mesh will be saved in the
   // current slot on M500.
@@ -1271,7 +1276,6 @@
 //===========================================================================
 //====================== I2C Position Encoder Settings ======================
 //===========================================================================
-
 /**
  *  I2C position encoders for closed loop control.
  *  Developed by Chris Barr at Aus3D.

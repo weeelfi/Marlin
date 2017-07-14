@@ -133,7 +133,7 @@
 #define LED_PIN            13
 #define PS_ON_PIN          45
 #define KILL_PIN           46
-#define CASE_LIGHT_PIN     45
+#define CASE_LIGHT_PIN     6
 
 //
 // LCD / Controller
