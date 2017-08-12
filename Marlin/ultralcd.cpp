@@ -184,6 +184,7 @@ uint16_t max_display_update_time = 0;
     void menu_action_setting_edit_callback_ ## _name(const char * const pstr, _type * const ptr, const _type minValue, const _type maxValue, const screenFunc_t callback, const bool live=false); \
     typedef void _name##_void
 
+  DECLARE_MENU_EDIT_TYPE(uint32_t, long5);
   DECLARE_MENU_EDIT_TYPE(int16_t, int3);
   DECLARE_MENU_EDIT_TYPE(uint8_t, int8);
   DECLARE_MENU_EDIT_TYPE(float, float3);
@@ -193,7 +194,6 @@ uint16_t max_display_update_time = 0;
   DECLARE_MENU_EDIT_TYPE(float, float51);
   DECLARE_MENU_EDIT_TYPE(float, float52);
   DECLARE_MENU_EDIT_TYPE(float, float62);
-  DECLARE_MENU_EDIT_TYPE(uint32_t, long5);
 
   void menu_action_setting_edit_bool(const char* pstr, bool* ptr);
   void menu_action_setting_edit_callback_bool(const char* pstr, bool* ptr, screenFunc_t callbackFunc);
@@ -1838,7 +1838,6 @@ void kill_screen(const char* lcd_msg) {
     void _lcd_ubl_level_bed();
 
     static int16_t ubl_storage_slot = 0,
-               custom_bed_temp = 50,
                custom_hotend_temp = 190,
                side_points = 3,
                ubl_fillin_amount = 5,
@@ -1846,6 +1845,10 @@ void kill_screen(const char* lcd_msg) {
                n_edit_pts = 1,
                x_plot = 0,
                y_plot = 0;
+
+    #if HAS_TEMP_BED
+      static int16_t custom_bed_temp = 50;
+    #endif
 
     /**
      * UBL Build Custom Mesh Command
@@ -3943,6 +3946,7 @@ void kill_screen(const char* lcd_msg) {
     } \
     typedef void _name
 
+  DEFINE_MENU_EDIT_TYPE(uint32_t, long5, ftostr5rj, 0.01);
   DEFINE_MENU_EDIT_TYPE(int16_t, int3, itostr3, 1);
   DEFINE_MENU_EDIT_TYPE(uint8_t, int8, i8tostr3, 1);
   DEFINE_MENU_EDIT_TYPE(float, float3, ftostr3, 1.0);
@@ -3952,7 +3956,6 @@ void kill_screen(const char* lcd_msg) {
   DEFINE_MENU_EDIT_TYPE(float, float51, ftostr51sign, 10.0);
   DEFINE_MENU_EDIT_TYPE(float, float52, ftostr52sign, 100.0);
   DEFINE_MENU_EDIT_TYPE(float, float62, ftostr62rj, 100.0);
-  DEFINE_MENU_EDIT_TYPE(uint32_t, long5, ftostr5rj, 0.01);
 
   /**
    *

@@ -32,7 +32,7 @@
  */
 #ifndef CONFIGURATION_ADV_H
 #define CONFIGURATION_ADV_H
-#define CONFIGURATION_ADV_H_VERSION 010100
+#define CONFIGURATION_ADV_H_VERSION 020000
 
 // @section temperature
 
@@ -745,7 +745,7 @@
 // Some clients will have this feature soon. This could make the NO_TIMEOUTS unnecessary.
 //#define ADVANCED_OK
 
-// @section fwretract
+// @section extras
 
 /**
  * Firmware-based and LCD-controlled retract

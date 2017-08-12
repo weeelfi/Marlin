@@ -37,7 +37,7 @@
  */
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
-#define CONFIGURATION_H_VERSION 010100
+#define CONFIGURATION_H_VERSION 020000
 
 //===========================================================================
 //============================= Getting Started =============================
@@ -755,12 +755,16 @@
 
 // @section machine
 
-// Travel limits after homing (units are in mm)
+// The size of the print bed
+#define X_BED_SIZE 300
+#define Y_BED_SIZE 200
+
+// Travel limits (mm) after homing, corresponding to endstop positions.
 #define X_MIN_POS 0
 #define Y_MIN_POS 0
 #define Z_MIN_POS 0
-#define X_MAX_POS 300
-#define Y_MAX_POS 240
+#define X_MAX_POS X_BED_SIZE
+#define Y_MAX_POS Y_BED_SIZE + 40
 #define Z_MAX_POS 280
 
 // If enabled, axes won't move below MIN_POS in response to movement commands.
@@ -1549,6 +1553,14 @@
   #define RGB_LED_G_PIN 43
   #define RGB_LED_B_PIN 35
   #define RGB_LED_W_PIN -1
+#endif
+
+// Support for Adafruit Neopixel LED driver
+//#define NEOPIXEL_RGBW_LED
+#if ENABLED(NEOPIXEL_RGBW_LED)
+  #define NEOPIXEL_PIN    4       // D4 (EXP2-5 on Printrboard)
+  #define NEOPIXEL_PIXELS 3
+  //#define NEOPIXEL_STARTUP_TEST // Cycle through colors at startup
 #endif
 
 /**

@@ -251,7 +251,9 @@
 #include "cardreader.h"
 #include "configuration_store.h"
 #include "language.h"
-#include "pins_arduino.h"
+#ifdef ARDUINO
+  #include "pins_arduino.h"
+#endif
 #include "math.h"
 #include "nozzle.h"
 #include "duration_t.h"
@@ -275,8 +277,8 @@
   #include "buzzer.h"
 #endif
 
-#if ENABLED(USE_WATCHDOG)
-  #include "watchdog.h"
+#if ENABLED(NEOPIXEL_RGBW_LED)
+  #include <Adafruit_NeoPixel.h>
 #endif
 
 #if ENABLED(BLINKM)
@@ -289,7 +291,7 @@
 #endif
 
 #if HAS_SERVOS
-  #include "servo.h"
+  #include "src/HAL/servo.h"
 #endif
 
 #if HAS_DIGIPOTSS
@@ -309,7 +311,7 @@
 #endif
 
 #if ENABLED(ENDSTOP_INTERRUPTS_FEATURE)
-  #include "endstop_interrupts.h"
+  #include "src/HAL/HAL_endstop_interrupts.h"
 #endif
 
 #if ENABLED(M100_FREE_MEMORY_WATCHER)
@@ -452,8 +454,8 @@ float filament_size[EXTRUDERS], volumetric_multiplier[EXTRUDERS];
 #if HAS_SOFTWARE_ENDSTOPS
   bool soft_endstops_enabled = true;
 #endif
-float soft_endstop_min[XYZ] = { X_MIN_POS, Y_MIN_POS, Z_MIN_POS },
-      soft_endstop_max[XYZ] = { X_MAX_POS, Y_MAX_POS, Z_MAX_POS };
+float soft_endstop_min[XYZ] = { X_MIN_BED, Y_MIN_BED, Z_MIN_POS },
+      soft_endstop_max[XYZ] = { X_MAX_BED, Y_MAX_BED, Z_MAX_POS };
 
 #if FAN_COUNT > 0
   int16_t fanSpeeds[FAN_COUNT] = { 0 };
@@ -643,7 +645,7 @@ float cartes[XYZ] = { 0 };
 static bool send_ok[BUFSIZE];
 
 #if HAS_SERVOS
-  Servo servo[NUM_SERVOS];
+  HAL_SERVO_LIB servo[NUM_SERVOS];
   #define MOVE_SERVO(I, P) servo[I].move(P)
   #if HAS_Z_SERVO_ENDSTOP
     #define DEPLOY_Z_SERVO() MOVE_SERVO(Z_ENDSTOP_SERVO_NR, z_servo_angle[0])
@@ -778,26 +780,6 @@ inline void sync_plan_position_e() { planner.set_e_position_mm(current_position[
   #define SYNC_PLAN_POSITION_KINEMATIC() sync_plan_position()
 
 #endif
-
-#if ENABLED(SDSUPPORT)
-  #include "SdFatUtil.h"
-  int freeMemory() { return SdFatUtil::FreeRam(); }
-#else
-extern "C" {
-  extern char __bss_end;
-  extern char __heap_start;
-  extern void* __brkval;
-
-  int freeMemory() {
-    int free_memory;
-    if ((int)__brkval == 0)
-      free_memory = ((int)&free_memory) - ((int)&__bss_end);
-    else
-      free_memory = ((int)&free_memory) - ((int)__brkval);
-    return free_memory;
-  }
-}
-#endif // !SDSUPPORT
 
 #if ENABLED(DIGIPOT_I2C)
   extern void digipot_i2c_set_current(uint8_t channel, float current);
@@ -968,12 +950,60 @@ void servo_init() {
 
 #if HAS_COLOR_LEDS
 
+  #if ENABLED(NEOPIXEL_RGBW_LED)
+
+    Adafruit_NeoPixel pixels(NEOPIXEL_PIXELS, NEOPIXEL_PIN, NEO_GRBW + NEO_KHZ800);
+
+    void set_neopixel_color(const uint32_t color) {
+      for (uint16_t i = 0; i < pixels.numPixels(); ++i)
+        pixels.setPixelColor(i, color);
+      pixels.show();
+    }
+
+    void setup_neopixel() {
+      pixels.setBrightness(255); // 0 - 255 range
+      pixels.begin();
+      pixels.show(); // initialize to all off
+
+      #if ENABLED(NEOPIXEL_STARTUP_TEST)
+        delay(2000);
+        set_neopixel_color(pixels.Color(255, 0, 0, 0));  // red
+        delay(2000);
+        set_neopixel_color(pixels.Color(0, 255, 0, 0));  // green
+        delay(2000);
+        set_neopixel_color(pixels.Color(0, 0, 255, 0));  // blue
+        delay(2000);
+      #endif
+      set_neopixel_color(pixels.Color(0, 0, 0, 255));    // white
+    }
+
+  #endif // NEOPIXEL_RGBW_LED
+
   void set_led_color(
     const uint8_t r, const uint8_t g, const uint8_t b
-      #if ENABLED(RGBW_LED)
-        , const uint8_t w=0
+      #if ENABLED(RGBW_LED) || ENABLED(NEOPIXEL_RGBW_LED)
+        , const uint8_t w = 0
+        #if ENABLED(NEOPIXEL_RGBW_LED)
+          , bool isSequence = false
+        #endif
       #endif
   ) {
+
+    #if ENABLED(NEOPIXEL_RGBW_LED)
+
+      const uint32_t color = pixels.Color(r, g, b, w);
+      static uint16_t nextLed = 0;
+
+      if (!isSequence)
+        set_neopixel_color(color);
+      else {
+        pixels.setPixelColor(nextLed, color);
+        pixels.show();
+        if (++nextLed >= pixels.numPixels()) nextLed = 0;
+        return;
+      }
+
+    #endif
 
     #if ENABLED(BLINKM)
 
@@ -4523,6 +4553,9 @@ void home_all_axes() { gcode_G28(true); }
 
       #if ENABLED(AUTO_BED_LEVELING_BILINEAR)
 
+        #if ENABLED(PROBE_MANUALLY)
+          if (!no_action)
+        #endif
         if ( xGridSpacing != bilinear_grid_spacing[X_AXIS]
           || yGridSpacing != bilinear_grid_spacing[Y_AXIS]
           || left_probe_bed_position != LOGICAL_X_POSITION(bilinear_start[X_AXIS])
@@ -5547,12 +5580,14 @@ void home_all_axes() { gcode_G28(true); }
 
     bool G38_pass_fail = false;
 
-    // Get direction of move and retract
-    float retract_mm[XYZ];
-    LOOP_XYZ(i) {
-      float dist = destination[i] - current_position[i];
-      retract_mm[i] = FABS(dist) < G38_MINIMUM_MOVE ? 0 : home_bump_mm((AxisEnum)i) * (dist > 0 ? -1 : 1);
-    }
+    #if ENABLED(PROBE_DOUBLE_TOUCH)
+      // Get direction of move and retract
+      float retract_mm[XYZ];
+      LOOP_XYZ(i) {
+        float dist = destination[i] - current_position[i];
+        retract_mm[i] = FABS(dist) < G38_MINIMUM_MOVE ? 0 : home_bump_mm((AxisEnum)i) * (dist > 0 ? -1 : 1);
+      }
+    #endif
 
     stepper.synchronize();  // wait until the machine is idle
 
@@ -5616,7 +5651,7 @@ void home_all_axes() { gcode_G28(true); }
     // If any axis has enough movement, do the move
     LOOP_XYZ(i)
       if (FABS(destination[i] - current_position[i]) >= G38_MINIMUM_MOVE) {
-        if (!parser.seenval('F')) feedrate_mm_s = homing_feedrate(i);
+        if (!parser.seenval('F')) feedrate_mm_s = homing_feedrate((AxisEnum)i);
         // If G38.2 fails throw an error
         if (!G38_run_probe() && is_38_2) {
           SERIAL_ERROR_START();
@@ -6462,7 +6497,7 @@ inline void gcode_M42() {
 
 #if ENABLED(PINS_DEBUGGING)
 
-  #include "pinsDebug.h"
+  #include "src/HAL/HAL_pinsDebug.h"
 
   inline void toggle_pins() {
     const bool I_flag = parser.boolval('I');
@@ -6473,7 +6508,7 @@ inline void gcode_M42() {
 
     for (uint8_t pin = start; pin <= end; pin++) {
       //report_pin_state_extended(pin, I_flag, false);
-
+      if (!VALID_PIN(pin)) continue;
       if (!I_flag && pin_is_protected(pin)) {
         report_pin_state_extended(pin, I_flag, true, "Untouched ");
         SERIAL_EOL();
@@ -6699,14 +6734,15 @@ inline void gcode_M42() {
     // Watch until click, M108, or reset
     if (parser.boolval('W')) {
       SERIAL_PROTOCOLLNPGM("Watching pins");
-      byte pin_state[last_pin - first_pin + 1];
+      uint8_t pin_state[last_pin - first_pin + 1];
       for (int8_t pin = first_pin; pin <= last_pin; pin++) {
+        if (!VALID_PIN(pin)) continue;
         if (pin_is_protected(pin) && !ignore_protection) continue;
         pinMode(pin, INPUT_PULLUP);
         delay(1);
         /*
           if (IS_ANALOG(pin))
-            pin_state[pin - first_pin] = analogRead(pin - analogInputToDigitalPin(0)); // int16_t pin_state[...]
+            pin_state[pin - first_pin] = analogRead(DIGITAL_PIN_TO_ANALOG_PIN(pin)); // int16_t pin_state[...]
           else
         //*/
             pin_state[pin - first_pin] = digitalRead(pin);
@@ -6719,11 +6755,12 @@ inline void gcode_M42() {
 
       for (;;) {
         for (int8_t pin = first_pin; pin <= last_pin; pin++) {
+          if (!VALID_PIN(pin)) continue;
           if (pin_is_protected(pin) && !ignore_protection) continue;
           const byte val =
             /*
               IS_ANALOG(pin)
-                ? analogRead(pin - analogInputToDigitalPin(0)) : // int16_t val
+                ? analogRead(DIGITAL_PIN_TO_ANALOG_PIN(pin)) : // int16_t val
                 :
             //*/
               digitalRead(pin);
@@ -6747,7 +6784,7 @@ inline void gcode_M42() {
 
     // Report current state of selected pin(s)
     for (uint8_t pin = first_pin; pin <= last_pin; pin++)
-      report_pin_state_extended(pin, ignore_protection, true);
+      if (VALID_PIN(pin)) report_pin_state_extended(pin, ignore_protection, true);
   }
 
 #endif // PINS_DEBUGGING
@@ -6853,15 +6890,16 @@ inline void gcode_M42() {
 
     for (uint8_t n = 0; n < n_samples; n++) {
       if (n_legs) {
-        int dir = (random(0, 10) > 5.0) ? -1 : 1;  // clockwise or counter clockwise
-        float angle = random(0.0, 360.0),
-              radius = random(
-                #if ENABLED(DELTA)
-                  DELTA_PROBEABLE_RADIUS / 8, DELTA_PROBEABLE_RADIUS / 3
-                #else
-                  5, X_MAX_LENGTH / 8
-                #endif
-              );
+        const int dir = (random(0, 10) > 5.0) ? -1 : 1;  // clockwise or counter clockwise
+        float angle = random(0.0, 360.0);
+        const float radius = random(
+          #if ENABLED(DELTA)
+            0.1250000000 * (DELTA_PROBEABLE_RADIUS),
+            0.3333333333 * (DELTA_PROBEABLE_RADIUS)
+          #else
+            5.0, 0.125 * min(X_BED_SIZE, Y_BED_SIZE)
+          #endif
+        );
 
         if (verbose_level > 3) {
           SERIAL_ECHOPAIR("Starting radius: ", radius);
@@ -7355,7 +7393,14 @@ inline void gcode_M109() {
       // Gradually change LED strip from violet to red as nozzle heats up
       if (!wants_to_cool) {
         const uint8_t blue = map(constrain(temp, start_temp, target_temp), start_temp, target_temp, 255, 0);
-        if (blue != old_blue) set_led_color(255, 0, (old_blue = blue));
+        if (blue != old_blue) {
+          old_blue = blue;
+          set_led_color(255, 0, blue
+            #if ENABLED(NEOPIXEL_RGBW_LED)
+              , 0, true
+            #endif
+          );
+        }
       }
     #endif
 
@@ -7390,7 +7435,7 @@ inline void gcode_M109() {
   if (wait_for_heatup) {
     LCD_MESSAGEPGM(MSG_HEATING_COMPLETE);
     #if ENABLED(PRINTER_EVENT_LEDS)
-      #if ENABLED(RGBW_LED)
+      #if ENABLED(RGBW_LED) || ENABLED(NEOPIXEL_RGBW_LED)
         set_led_color(0, 0, 0, 255);  // Turn on the WHITE LED
       #else
         set_led_color(255, 255, 255); // Set LEDs All On
@@ -7488,7 +7533,14 @@ inline void gcode_M109() {
         // Gradually change LED strip from blue to violet as bed heats up
         if (!wants_to_cool) {
           const uint8_t red = map(constrain(temp, start_temp, target_temp), start_temp, target_temp, 0, 255);
-          if (red != old_red) set_led_color((old_red = red), 0, 255);
+          if (red != old_red) {
+            old_red = red;
+            set_led_color(red, 0, 255
+              #if ENABLED(NEOPIXEL_RGBW_LED)
+                , 0, true
+              #endif
+            );
+          }
         }
       #endif
 
@@ -8146,7 +8198,7 @@ inline void gcode_M121() { endstops.enable_globally(false); }
       parser.seen('R') ? (parser.has_value() ? parser.value_byte() : 255) : 0,
       parser.seen('U') ? (parser.has_value() ? parser.value_byte() : 255) : 0,
       parser.seen('B') ? (parser.has_value() ? parser.value_byte() : 255) : 0
-      #if ENABLED(RGBW_LED)
+      #if ENABLED(RGBW_LED) || ENABLED(NEOPIXEL_RGBW_LED)
         , parser.seen('W') ? (parser.has_value() ? parser.value_byte() : 255) : 0
       #endif
     );
@@ -8279,7 +8331,7 @@ inline void gcode_M205() {
    *
    * *** @thinkyhead: I recommend deprecating M206 for SCARA in favor of M665.
    * ***              M206 for SCARA will remain enabled in 1.1.x for compatibility.
-   * ***              In the next 1.2 release, it will simply be disabled by default.
+   * ***              In the 2.0 release, it will simply be disabled by default.
    */
   inline void gcode_M206() {
     LOOP_XYZ(i)
@@ -10723,6 +10775,7 @@ void process_next_command() {
         gcode_M140();
         break;
 
+
       case 105: // M105: Report current temperature
         gcode_M105();
         KEEPALIVE_STATE(NOT_BUSY);
@@ -11457,7 +11510,7 @@ void ok_to_send() {
     delta_diagonal_rod_2_tower[C_AXIS] = sq(diagonal_rod + drt[C_AXIS]);
   }
 
-  #if ENABLED(DELTA_FAST_SQRT)
+  #if ENABLED(DELTA_FAST_SQRT) && defined(ARDUINO_ARCH_AVR)
     /**
      * Fast inverse sqrt from Quake III Arena
      * See: https://en.wikipedia.org/wiki/Fast_inverse_square_root
@@ -12884,7 +12937,7 @@ void kill(const char* lcd_msg) {
   _delay_ms(250); //Wait to ensure all interrupts routines stopped
   thermalManager.disable_all_heaters(); //turn off heaters again
 
-  #if defined(ACTION_ON_KILL)
+  #ifdef ACTION_ON_KILL
     SERIAL_ECHOLNPGM("//action:" ACTION_ON_KILL);
   #endif
 
@@ -12960,17 +13013,22 @@ void setup() {
   #endif
 
   MYSERIAL.begin(BAUDRATE);
+  while(!MYSERIAL);
   SERIAL_PROTOCOLLNPGM("start");
   SERIAL_ECHO_START();
 
   // Check startup - does nothing if bootloader sets MCUSR to 0
-  byte mcu = MCUSR;
+  byte mcu = HAL_get_reset_source();
   if (mcu &  1) SERIAL_ECHOLNPGM(MSG_POWERUP);
   if (mcu &  2) SERIAL_ECHOLNPGM(MSG_EXTERNAL_RESET);
   if (mcu &  4) SERIAL_ECHOLNPGM(MSG_BROWNOUT_RESET);
   if (mcu &  8) SERIAL_ECHOLNPGM(MSG_WATCHDOG_RESET);
   if (mcu & 32) SERIAL_ECHOLNPGM(MSG_SOFTWARE_RESET);
-  MCUSR = 0;
+  HAL_clear_reset_source();
+
+  #if ENABLED(USE_WATCHDOG) //reinit watchdog after HAL_get_reset_source call
+    watchdog_init();
+  #endif
 
   SERIAL_ECHOPGM(MSG_MARLIN);
   SERIAL_CHAR(' ');
@@ -13007,10 +13065,6 @@ void setup() {
   SYNC_PLAN_POSITION_KINEMATIC();
 
   thermalManager.init();    // Initialize temperature loop
-
-  #if ENABLED(USE_WATCHDOG)
-    watchdog_init();
-  #endif
 
   stepper.init();    // Initialize stepper, this enables interrupts!
   servo_init();
@@ -13070,6 +13124,11 @@ void setup() {
 
   #if PIN_EXISTS(STAT_LED_BLUE)
     OUT_WRITE(STAT_LED_BLUE_PIN, LOW); // turn it off
+  #endif
+
+  #if ENABLED(NEOPIXEL_RGBW_LED)
+    SET_OUTPUT(NEOPIXEL_PIN);
+    setup_neopixel();
   #endif
 
   #if ENABLED(RGB_LED) || ENABLED(RGBW_LED)
@@ -13202,4 +13261,3 @@ void loop() {
   endstops.report_state();
   idle();
 }
-
