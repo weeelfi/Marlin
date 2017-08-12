@@ -10,18 +10,18 @@ extern "C" {
 #include <lpc17xx_gpio.h>
 }
 
-#include "usb/usb.h"
-#include "usb/usbcfg.h"
-#include "usb/usbhw.h"
-#include "usb/usbcore.h"
-#include "usb/cdc.h"
-#include "usb/cdcuser.h"
-#include "usb/mscuser.h"
+#include <usb/usb.h>
+#include <usb/usbcfg.h>
+#include <usb/usbhw.h>
+#include <usb/usbcore.h>
+#include <usb/cdc.h>
+#include <usb/cdcuser.h>
+#include <usb/mscuser.h>
 
 extern "C" {
 #include <debug_frmwrk.h>
-#include "chanfs/diskio.h"
-#include "chanfs/ff.h"
+#include <chanfs/diskio.h>
+#include <chanfs/ff.h>
 }
 
 #include "fastio.h"
@@ -43,6 +43,7 @@ static __INLINE uint32_t SysTick_Config(uint32_t ticks) {
   SysTick_CTRL_ENABLE_Msk; /* Enable SysTick IRQ and SysTick Timer */
   return (0); /* Function successful */
 }
+
 extern "C" {
 extern void disk_timerproc(void);
 volatile uint32_t _millis;
@@ -69,7 +70,6 @@ extern "C" void SystemPostInit() {
 extern uint32_t MSC_SD_Init(uint8_t pdrv);
 extern HalSerial usb_serial;
 int main(void) {
-  debug_frmwrk_init();
 
   (void)MSC_SD_Init(0);
   USB_Init();                               // USB Initialization
@@ -81,7 +81,8 @@ int main(void) {
     TOGGLE(13);     // Flash fast while USB initialisation completes
   }
 
-  usb_serial.printf("\n\nRe-ARM (LPC1768 @ %dMhz) USB Initialised\n", SystemCoreClock / 1000000);
+  debug_frmwrk_init();
+  usb_serial.printf("\n\nRe-ARM (LPC1768 @ %dMhz) UART0 Initialised\n", SystemCoreClock / 1000000);
 
   HAL_timer_init();
 

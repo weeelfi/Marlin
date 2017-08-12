@@ -23,6 +23,7 @@
 #ifdef TARGET_LPC1768
 #include <lpc17xx_pinsel.h>
 #include "HAL.h"
+#include "../../macros.h"
 
 // Interrupts
 void cli(void) { __disable_irq(); } // Disable
@@ -42,17 +43,28 @@ uint32_t millis() {
   return _millis;
 }
 
-//todo: recheck all of this
 void delayMicroseconds(uint32_t us) {
-  if (us < 2) return; // function jump, compare, return about 1us
-  us--;
-  static const int nop_factor = (SystemCoreClock / 10000000); // measured accurate at 10us
+  static const int nop_factor = (SystemCoreClock / 11000000);
   static volatile int loops = 0;
-  if (us < 20) { // burn cycles
+
+  //previous ops already burned most of 1us, burn the rest
+  loops = nop_factor / 4; //measured at 1us
+  while (loops > 0) --loops;
+
+  if (us < 2) return;
+  us--;
+
+  //redirect to delay for large values, then set new delay to remainder
+  if (us > 1000) {
+    delay(us / 1000);
+    us = us % 1000;
+  }
+
+  if (us < 5) { // burn cycles, time in interrupts will not be taken into account
     loops = us * nop_factor;
     while (loops > 0) --loops;
   }
-  else { // poll systick
+  else { // poll systick, more accurate through interrupts
     int32_t start = SysTick->VAL;
     int32_t load = SysTick->LOAD;
     int32_t end = start - (load / 1000) * us;
@@ -66,6 +78,8 @@ void delayMicroseconds(uint32_t us) {
 
 extern "C" void delay(int msec) {
    volatile int32_t end = _millis + msec;
+   SysTick->VAL = SysTick->LOAD; // reset systick counter so next systick is in exactly 1ms
+                                 // this could extend the time between systicks by upto 1ms
    while (_millis < end) __WFE();
 }
 
@@ -107,6 +121,16 @@ void digitalWrite(int pin, int pin_status) {
     LPC_GPIO(pin_map[pin].port)->FIOSET = LPC_PIN(pin_map[pin].pin);
   else
     LPC_GPIO(pin_map[pin].port)->FIOCLR = LPC_PIN(pin_map[pin].pin);
+
+  pinMode(pin, OUTPUT);  // Set pin mode on every write (Arduino version does this)
+
+    /**
+     * Must be done AFTER the output state is set. Doing this before will cause a
+     * 2uS glitch if writing a "1".
+     *
+     * When the Port Direction bit is written to a "1" the output is immediately set
+     * to the value of the FIOPIN bit which is "0" because of power up defaults.
+     */
 }
 
 bool digitalRead(int pin) {

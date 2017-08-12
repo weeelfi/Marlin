@@ -2,6 +2,9 @@
  * Marlin 3D Printer Firmware
  * Copyright (C) 2016 MarlinFirmware [https://github.com/MarlinFirmware/Marlin]
  *
+ * Based on Sprinter and grbl.
+ * Copyright (C) 2011 Camiel Gubbels / Erik van der Zalm
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -17,16 +20,10 @@
  *
  */
 
-
 #ifndef SPI_PINS_LPC1768_H
 #define SPI_PINS_LPC1768_H
 
-//new config options
-#define SD_SPI_CHANNEL (HAL::SPI::CHANNEL_2)
-#define LCD_SPI_FREQUENCY 4000000
-#define LCD_SPI_CHANNEL (HAL::SPI::CHANNEL_1)
-
-//#define SOFTWARE_SPI
+#define SOFTWARE_SPI
 /** onboard SD card */
 //#define SCK_PIN           P0_7
 //#define MISO_PIN          P0_8

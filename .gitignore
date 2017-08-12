@@ -122,7 +122,7 @@ tags
 .piolibdeps
 .clang_complete
 .gcc-flags.json
-lib/
+/lib/
 
 #Visual Studio
 *.sln
@@ -132,6 +132,9 @@ Marlin/Release/
 Marlin/Debug/
 Marlin/__vm/
 Marlin/.vs/
+
+#Visual Studio Code
+.vscode
 
 #cmake
 CMakeLists.txt

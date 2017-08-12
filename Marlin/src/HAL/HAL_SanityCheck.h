@@ -20,25 +20,18 @@
  *
  */
 
-#ifndef HAL_SPI_PINS_H_
-#define HAL_SPI_PINS_H_
+#ifndef HAL_SANITYCHECK_H
 
-#include "../../MarlinConfig.h"
-
-#ifdef ARDUINO_ARCH_SAM
-  #include "HAL_DUE/spi_pins.h"
-
-#elif defined(IS_32BIT_TEENSY)
-  #include "HAL_TEENSY35_36/spi_pins.h"
-
-#elif defined(ARDUINO_ARCH_AVR)
-  #include "HAL_AVR/spi_pins.h"
-
+#ifdef ARDUINO_ARCH_AVR
+  #include "HAL_AVR/SanityCheck_AVR_8_bit.h"
+#elif defined(ARDUINO_ARCH_SAM)
+  #include "HAL_DUE/SanityCheck_Due.h"
+#elif IS_32BIT_TEENSY
+  #include "HAL_TEENSY35_36/SanityCheck_Teensy_35_36.h"
 #elif defined(TARGET_LPC1768)
-  #include "HAL_LPC1768/spi_pins.h"
-
+  #include "HAL_LPC1768/SanityCheck_Re_ARM.h"
 #else
-  #error "Unsupported Platform!"
+  #error Unsupported Platform!
 #endif
-
-#endif /* HAL_SPI_PINS_H_ */
+ 
+#endif
