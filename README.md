@@ -1,3 +1,8 @@
+This is just a fork from @apballard, updated to Marlin 1.1.8 (December 2017), errors fixed and tested for RAMPS1.4.
+All needed is change Serial3 for Serial2 in line 37 of \ITEADLIB_Arduino_Nextion\NexConfig.h and use D16 and D17 of AUX4 port.
+
+Original readme.md from @apballard
+__________________________________
 # Marlin 3D Printer Firmware
 
 This is my version of Marlin based on RC8 Bugfix.
