@@ -1,4 +1,4 @@
-This is just a fork from @apballard, updated to Marlin 1.1.8 (December 2017), errors fixed and tested for RAMPS1.4.
+This is just a fork from @apballard, updated to Marlin 1.1.8 (December 2017: commit 0640bd028215a01ff9a01a46d4dcb859ba208a20), errors fixed and tested for RAMPS1.4.
 All needed is change Serial3 for Serial2 in line 37 of \ITEADLIB_Arduino_Nextion\NexConfig.h and use D16 and D17 of AUX4 port.
 
 Original readme.md from @apballard
