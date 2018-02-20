@@ -8,6 +8,7 @@
 #include "temperature.h"
 #include "PrinterClass.h"
 #include "queueArray.h"
+#include "planner.h"
 //#include <TimeLib.h> 
 
 
@@ -59,8 +60,8 @@ void lcd_update() {
 
 		printer.setFan(itoa(map(fanSpeeds[0], 0, 255, 0, 100), temp, 10));
 
-		printer.setPower(digitalRead(PS_ON_PIN));
-		printer.setCaseLight(digitalRead(CASE_LIGHT_PIN));
+		//printer.setPower(digitalRead(PS_ON_PIN));
+		//printer.setCaseLight(digitalRead(CASE_LIGHT_PIN));
 
 		printer.setIsPrinting(planner.movesplanned());
 		printer.setIsHomed(axis_homed[X_AXIS] && axis_homed[Y_AXIS] && axis_homed[Z_AXIS] ? true : false);
@@ -89,9 +90,9 @@ void processBuffer(const char* receivedString) {
 		subbuff[strLength + 1] = '\0';
 
 		thermalManager.setTargetHotend(atoi(subbuff), ((int)receivedString[1]) - 1);
-		SERIAL_ECHO_START;
+		SERIAL_ECHO_START();
 		SERIAL_ECHOLNPAIR("receivedString: ", receivedString);
-		SERIAL_EOL;
+		SERIAL_EOL();
 
 		break;
 	case 'A':
@@ -100,9 +101,9 @@ void processBuffer(const char* receivedString) {
 		subbuff[strLength + 1] = '\0';
 
 		thermalManager.setTargetBed(atoi(subbuff));
-		SERIAL_ECHO_START;
+		SERIAL_ECHO_START();
 		SERIAL_ECHOLNPAIR("receivedString: ", receivedString);
-		SERIAL_EOL;
+		SERIAL_EOL();
 
 		break;
 	case 'F':
@@ -111,12 +112,12 @@ void processBuffer(const char* receivedString) {
 		subbuff[strLength + 1] = '\0';
 
 		fanSpeeds[0] = map(atoi(subbuff), 0, 100, 0, 255); //(ceil(atoi(subbuff) * 2.54));
-		SERIAL_ECHO_START;
+		SERIAL_ECHO_START();
 		SERIAL_ECHOLNPAIR("receivedString: ", atoi(subbuff));
 		//SERIAL_ECHOLNPAIR("subbuff: ", subbuff);
 		//SERIAL_ECHOLNPAIR("receivedByte: ", receivedByte);
 		//SERIAL_ECHOLNPAIR("strLength: ", strLength);
-		SERIAL_EOL;
+		SERIAL_EOL();
 
 		break;
 	case 'G':
@@ -125,9 +126,9 @@ void processBuffer(const char* receivedString) {
 		subbuff[strLength] = '\0';
 
 		enqueue_and_echo_command(subbuff);
-		SERIAL_ECHO_START;
+		SERIAL_ECHO_START();
 		SERIAL_ECHOLNPAIR("receivedString: ", receivedString);
-		SERIAL_EOL;
+		SERIAL_EOL();
 
 		break;
 	case 'P':
@@ -137,9 +138,9 @@ void processBuffer(const char* receivedString) {
 
 		printer.setPage(atoi(subbuff));
 
-		SERIAL_ECHO_START;
+		SERIAL_ECHO_START();
 		SERIAL_ECHOLNPAIR("receivedString: ", receivedString);
-		SERIAL_EOL;
+		SERIAL_EOL();
 
 		break;
 	case 'I': //Power status
@@ -149,10 +150,10 @@ void processBuffer(const char* receivedString) {
 
 		printer.setPower((bool)atoi(subbuff));
 
-		SERIAL_ECHO_START;
+		SERIAL_ECHO_START();
 		SERIAL_ECHOLNPAIR("receivedString: ", receivedString);
 		//SERIAL_ECHOLNPAIR("subbuff: ", subbuff);
-		SERIAL_EOL;
+		SERIAL_EOL();
 
 		break;
 	case 'C': //Case Light
@@ -162,10 +163,10 @@ void processBuffer(const char* receivedString) {
 
 		printer.setCaseLight((bool)atoi(subbuff));
 
-		SERIAL_ECHO_START;
+		SERIAL_ECHO_START();
 		SERIAL_ECHOLNPAIR("receivedString: ", receivedString);
 		//SERIAL_ECHOLNPAIR("subbuff: ", subbuff);
-		SERIAL_EOL;
+		SERIAL_EOL();
 
 		break;
 
@@ -226,9 +227,9 @@ void ProcessPage(char * inputString, uint8_t receivedBytes)
 
 	printer.setPage(atoi(subbuff));
 
-	SERIAL_ECHO_START;
+	SERIAL_ECHO_START();
 	SERIAL_ECHOLNPAIR("Page: ", printer.getPage());
-	SERIAL_EOL;
+	SERIAL_EOL();
 
 }
 
@@ -245,17 +246,17 @@ void lcd_setstatuspgm(const char* message, uint8_t level) {
 void processMessage(const char * message)
 {
 
-	SERIAL_ECHO_START;
+	SERIAL_ECHO_START();
 	SERIAL_ECHOLNPAIR("Message: ", message);
-	SERIAL_EOL;
+	SERIAL_EOL();
 	char subbuff[32];
 	char buff[5];
 
 	if (message[0] == 'L' && message[1] == 'a') //La/yer
 	{
-		//SERIAL_ECHO_START;
+		//SERIAL_ECHO_START();
 		//SERIAL_ECHOLN("Layer Start");
-		//SERIAL_EOL;
+		//SERIAL_EOL();
 		const uint8_t startPos = 6;
 		uint8_t toCounter = startPos;
 		while (toCounter<32)
@@ -271,19 +272,19 @@ void processMessage(const char * message)
 			toCounter++;
 		}
 		printer.setTLayers(subbuff);
-		//SERIAL_ECHO_START;
+		//SERIAL_ECHO_START();
 		//SERIAL_ECHOLN("Layer End");
 		//SERIAL_ECHOLNPAIR("Layer: ",subbuff);
-		//SERIAL_EOL;
+		//SERIAL_EOL();
 
 		return;
 
 	}
 	else if (message[0] == 'E' && message[1] == 'T' && message[2] == 'L')
 	{
-		//SERIAL_ECHO_START;
+		//SERIAL_ECHO_START();
 		//SERIAL_ECHOLN("ETA");
-		//SERIAL_EOL;
+		//SERIAL_EOL();
 		strlcpy(subbuff, &message[4], 11);
 		printer.setTETA(subbuff);
 	}
@@ -294,12 +295,12 @@ void processMessage(const char * message)
 		myTime = atol(subbuff) + 7200;
 		setTime(myTime);
 
-		//SERIAL_ECHO_START;
+		//SERIAL_ECHO_START();
 		//SERIAL_ECHOLNPAIR("myTime: ", subbuff);
 		//SERIAL_ECHOLNPAIR("Day: ", day());
 		//SERIAL_ECHOLNPAIR("Month: ", month());
 		//SERIAL_ECHOLNPAIR("Year: ", year());
-		//SERIAL_EOL;
+		//SERIAL_EOL();
 
 	}
 	else
@@ -308,9 +309,9 @@ void processMessage(const char * message)
 		uint8_t dotLocation = 0;
 		if (message[0] != 'I' && message[1] != 'P' && message[0]!='H') //exclude IP Address and Heating...
 		{
-			//SERIAL_ECHO_START;
+			//SERIAL_ECHO_START();
 			//SERIAL_ECHOLN("Percentage");
-			//SERIAL_EOL;
+			//SERIAL_EOL();
 			for (uint8_t i = 0; i < 9; i++)
 			{
 				if (message[i] == '.')
