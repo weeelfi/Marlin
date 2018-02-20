@@ -90,7 +90,7 @@
 #if TEMP_SENSOR_0 == -1
   #define TEMP_0_PIN        6   // Analog Input (connector *K1* on RUMBA thermocouple ADD ON is used)
 #else
-  #define TEMP_0_PIN       10	//15   // Analog Input (default connector for thermistor *T0* on rumba board is used)
+  #define TEMP_0_PIN       15   // Analog Input (default connector for thermistor *T0* on rumba board is used)
 #endif
 
 #if TEMP_SENSOR_1 == -1
